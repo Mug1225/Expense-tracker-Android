@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ IDEA / Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Local configuration file (sdk path, etc)
+local.properties
+
+# Log files
+*.log
+
+# Android App Bundle / APK
+*.apk
+*.aab
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Podman / Docker
+.podman-images/
