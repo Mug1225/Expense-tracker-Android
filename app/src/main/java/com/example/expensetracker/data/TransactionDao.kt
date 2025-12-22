@@ -3,6 +3,7 @@ package com.example.expensetracker.data
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -10,9 +11,23 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     fun getAllTransactions(): Flow<List<Transaction>>
 
+    @Query("SELECT * FROM transactions WHERE date >= :startTime AND date <= :endTime ORDER BY date DESC")
+    fun getTransactionsForMonth(startTime: Long, endTime: Long): Flow<List<Transaction>>
+
     @Insert
     suspend fun insertTransaction(transaction: Transaction)
 
-    @Query("SELECT SUM(amount) FROM transactions")
-    fun getTotalExpense(): Flow<Double?>
+    @Update
+    suspend fun updateTransaction(transaction: Transaction)
+
+    @Query("SELECT SUM(amount) FROM transactions WHERE date >= :startTime AND date <= :endTime")
+    fun getTotalExpenseForMonth(startTime: Long, endTime: Long): Flow<Double?>
+
+    @Query("SELECT categoryId, SUM(amount) as totalAmount FROM transactions WHERE date >= :startTime AND date <= :endTime GROUP BY categoryId")
+    fun getExpensesByCategory(startTime: Long, endTime: Long): Flow<List<CategoryExpense>>
 }
+
+data class CategoryExpense(
+    val categoryId: Int?,
+    val totalAmount: Double
+)

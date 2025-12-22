@@ -39,6 +39,13 @@ class SmsReceiver : BroadcastReceiver() {
                         val transaction = SmsParser.parseSms(sender, body, timestamp)
                         if (transaction != null) {
                             Log.d("SmsReceiver", "Parsed Transaction: $transaction")
+                            
+                            // Auto-categorization
+                            val mapping = repository.getMappingForMerchant(transaction.merchant)
+                            if (mapping != null) {
+                                transaction.categoryId = mapping.categoryId
+                            }
+                            
                             repository.addTransaction(transaction)
                         }
                     }

@@ -9,53 +9,100 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.expensetracker.ui.HomeScreen
 import com.example.expensetracker.ui.PermissionRequestScreen
+import com.example.expensetracker.ui.CategoryScreen
+import com.example.expensetracker.ui.EditTransactionDialog
+import com.example.expensetracker.ui.TransactionViewModel
+import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
+import com.example.expensetracker.data.Transaction
 import dagger.hilt.android.AndroidEntryPoint
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    var hasPermission by remember {
-                        mutableStateOf(
-                            checkSelfPermission(Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        )
-                    }
-
-                    val launcher = rememberLauncherForActivityResult(
-                        contract = ActivityResultContracts.RequestMultiplePermissions(),
-                        onResult = { permissions ->
-                            hasPermission = permissions[Manifest.permission.READ_SMS] == true &&
-                                            permissions[Manifest.permission.RECEIVE_SMS] == true
-                        }
-                    )
-
-                    if (hasPermission) {
-                        HomeScreen {
-                           // Handle any permission revocations or re-checks if needed
-                        }
-                    } else {
-                        PermissionRequestScreen {
-                            launcher.launch(
-                                arrayOf(
-                                    Manifest.permission.READ_SMS,
-                                    Manifest.permission.RECEIVE_SMS
-                                )
-                            )
-                        }
-                    }
-                }
+            ExpenseTrackerTheme {
+                MainContent()
             }
         }
     }
 }
 
+@Composable
+fun MainContent(viewModel: TransactionViewModel = viewModel()) {
+    var hasSmsPermission by remember {
+        mutableStateOf(false)
+    }
+    
+    // Simple state-based navigation
+    var currentScreen by remember { mutableStateOf("home") }
+    var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
+    val categories by viewModel.categories.collectAsState()
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        hasSmsPermission = permissions[Manifest.permission.READ_SMS] == true &&
+                permissions[Manifest.permission.RECEIVE_SMS] == true
+    }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit) {
+        val readGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.READ_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        
+        val receiveGranted = androidx.core.content.ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECEIVE_SMS
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        
+        hasSmsPermission = readGranted && receiveGranted
+    }
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        if (!hasSmsPermission) {
+            PermissionRequestScreen {
+                launcher.launch(
+                    arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS)
+                )
+            }
+        } else {
+            when (currentScreen) {
+                "home" -> HomeScreen(
+                    viewModel = viewModel,
+                    onCategoryClick = { currentScreen = "categories" },
+                    onTransactionClick = { editingTransaction = it }
+                )
+                "categories" -> CategoryScreen(
+                    viewModel = viewModel,
+                    onBack = { currentScreen = "home" }
+                )
+            }
+        }
+
+        editingTransaction?.let { transaction ->
+            EditTransactionDialog(
+                transaction = transaction,
+                categories = categories,
+                onDismiss = { editingTransaction = null },
+                onSave = { updated, mappingCategoryId ->
+                    viewModel.updateTransaction(updated)
+                    mappingCategoryId?.let { 
+                        viewModel.saveMerchantMapping(updated.merchant, it)
+                    }
+                    editingTransaction = null
+                }
+            )
+        }
+    }
+}

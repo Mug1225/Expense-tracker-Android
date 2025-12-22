@@ -9,15 +9,13 @@ object SmsParser {
     // Also captures merchant name often found after "at" or "to"
     // This is a simplified parser and would need refinement for specific banks.
     
-    // Example: "Acct XX123 debited for Rs 500.00 on 12-Dec-23 at AMAZON. Bal Rs 1000"
+    // Format: "... debited ... Rs. 500.00 on 22-Dec to AMAZON PAY ..."
     
-    private val AMOUNT_PATTERN = Pattern.compile("(?i)(?:Rs\\.?|INR)\\s*([0-9,]+(?:\\.[0-9]{2})?)")
-    private val MERCHANT_PATTERN = Pattern.compile("(?i)(?:at|to|info)\\s+([A-Za-z0-9\\s]+?)(?:\\.|\\s|$)")
+    private val AMOUNT_PATTERN = Pattern.compile("(?i)Rs\\.?\\s*([0-9,]+(?:\\.[0-9]{2})?)")
+    private val DATE_PATTERN = Pattern.compile("(?i)on\\s+([0-9]{1,2}-[A-Za-z]{3}(?:-[0-9]{2,4})?)")
+    private val MERCHANT_PATTERN = Pattern.compile("(?i)to\\s+(.+?)(?:\\.|\\s{2,}|$)")
 
     fun parseSms(sender: String, message: String, timestamp: Long): Transaction? {
-        // Basic filter: Only reliable bank senders usually headers like "XY-BANK"
-        // For now, we process everything that looks like a debit.
-        
         if (!message.contains("debited", ignoreCase = true) && !message.contains("spent", ignoreCase = true)) {
              return null
         }
@@ -29,6 +27,10 @@ object SmsParser {
             return null
         }
 
+        val dateMatcher = DATE_PATTERN.matcher(message)
+        // We still use current timestamp as primary, but we could try to parse the date string if needed.
+        // For now, let's just stick to extracting the merchant name.
+        
         val merchantMatcher = MERCHANT_PATTERN.matcher(message)
         val merchant = if (merchantMatcher.find()) {
             merchantMatcher.group(1)?.trim() ?: "Unknown"

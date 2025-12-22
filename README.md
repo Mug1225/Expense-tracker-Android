@@ -27,25 +27,35 @@ A native Android application that automatically tracks your expenses by parsing 
 
 #### Core Logic (`/core`)
 - **`SmsParser.kt`**: A utility object containing Regex logic.
-  - `parseSms()`: Extracts amount, merchant name, and date from raw SMS text. currently supports generic formats like "Rs. 500 debited at Amazon".
+  - `parseSms()`: Extracts amount, merchant name, and date from raw SMS text. Optimized for formats like "Rs. 500 debited on 22-Dec to AMAZON".
 
 #### Data Layer (`/data`)
-- **`Transaction.kt`**: The Room Entity representing a single expense record in the database.
-- **`TransactionDao.kt`**: Data Access Object defining SQL queries (INSERT, SELECT ALL, SELECT SUM).
-- **`AppDatabase.kt`**: The Room Database abstract class.
-- **`TransactionRepository.kt`**: A clean API for the UI and Receiver to access data. Hides the complexity of Room and Coroutines.
+- **`Transaction.kt`**: The Room Entity. Includes `categoryId` and `isEdited` flags.
+- **`Category.kt`**: Entity for user-defined expense categories with Material Icon support.
+- **`MerchantMapping.kt`**: Maps specific merchant names to categories for auto-assignment.
+- **`TransactionDao.kt` / `AdvancedDaos.kt`**: DAOs for complex queries including month-wise filtering and spending aggregation by category.
+- **`AppDatabase.kt`**: The Room Database abstract class managing all three entities.
+- **`TransactionRepository.kt`**: Orchestrates data flow between DAOs and UI, handling auto-categorization logic.
 
 #### Dependency Injection (`/di`)
-- **`DatabaseModule.kt`**: A Hilt module that provides singleton instances of `AppDatabase` and `TransactionDao` to the dependency graph.
+- **`DatabaseModule.kt`**: Hilt module providing database and DAO instances.
 
 #### UI Layer (`/ui`)
-- **`TransactionViewModel.kt`**: The state holder for the UI.
-  - Exposes `transactions` (List) and `totalExpense` (Double) as `StateFlow` streams.
-  - Survives configuration changes (rotation).
-- **`HomeScreen.kt`**: The main dashboard.
-  - Displays the total expense summary.
-  - Lists individual transactions using a `LazyColumn`.
-- **`PermissionRequestScreen.kt`**: A user-friendly screen explaining why the app needs SMS permissions.
+- **`TransactionViewModel.kt`**: Manages month-based filtering, reactive spending summaries, and transaction updates.
+- **`HomeScreen.kt`**: Dashboard featuring a month navigator, category spending summaries, and the transaction list.
+- **`CategoryScreen.kt`**: Interface for managing categories with icon suggestions based on category names.
+- **`EditTransactionDialog.kt`**: Provides manual override for transaction details and merchant-to-category mapping.
+- **`IconHelper.kt`**: Maps category names to relevant Material Icons and provides suggestions.
+- **`PermissionRequestScreen.kt`**: Screens explaining the need for SMS permissions.
+
+## Key Features
+
+- **Automated SMS Tracking**: Parses bank SMS alerts to log expenses instantly.
+- **Smart Categorization**: Learns from manual edits to auto-assign categories to future transactions from the same merchant.
+- **Category Management**: Create custom categories with a library of Material Icons.
+- **Month-wise Analysis**: Navigate through months to see total spending and category breakdowns.
+- **Manual Editing**: Correct parsed data or manually categorize any transaction.
+
 
 ## Build Instructions
 

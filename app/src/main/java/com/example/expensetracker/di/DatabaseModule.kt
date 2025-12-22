@@ -2,8 +2,7 @@ package com.example.expensetracker.di
 
 import android.content.Context
 import androidx.room.Room
-import com.example.expensetracker.data.AppDatabase
-import com.example.expensetracker.data.TransactionDao
+import com.example.expensetracker.data.*
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,5 +27,15 @@ object DatabaseModule {
     @Provides
     fun provideTransactionDao(appDatabase: AppDatabase): TransactionDao {
         return appDatabase.transactionDao()
+    }
+
+    @Provides
+    fun provideCategoryDao(appDatabase: AppDatabase): CategoryDao {
+        return appDatabase.categoryDao()
+    }
+
+    @Provides
+    fun provideMerchantMappingDao(appDatabase: AppDatabase): MerchantMappingDao {
+        return appDatabase.merchantMappingDao()
     }
 }

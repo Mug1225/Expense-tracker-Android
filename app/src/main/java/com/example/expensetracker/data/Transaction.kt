@@ -7,9 +7,11 @@ import java.util.Date
 @Entity(tableName = "transactions")
 data class Transaction(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
-    val amount: Double,
-    val merchant: String,
-    val date: Long,
+    var amount: Double,
+    var merchant: String,
+    var date: Long,
     val sender: String, // Bank sender ID
-    val fullMessage: String
+    val fullMessage: String,
+    var categoryId: Int? = null,
+    var isEdited: Boolean = false
 )
