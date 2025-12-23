@@ -7,11 +7,13 @@ Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for 
 ## ✨ Key Features
 
 - **🎨 Dynamic Themes**: Personalize your experience with premium themes including **Emerald**, **Ocean**, and **Charcoal**. Access them via the Settings gear.
+- **📅 Custom Date Ranges**: Tap the month header to select specific dates (e.g., "Last 2 Weeks") for precise expense tracking.
+- **⚙️ Composite Filtering**: Combine date ranges with category filters to see exactly what you spent on "Food" during your "Vacation".
 - **🏷️ Custom Categories**: Create categories and choose from a library of icons to visually organize your spending.
 - **⚡ Flexible Entry**: Add manual transactions quickly. Merchant and tags are optional, and validity is checked instantly.
 - **Automated SMS Tracking**: Instantly logs expenses by parsing bank SMS alerts using optimized regex logic.
 - **Merchant Tagging**: Organize your spending with multiple tags. Tags replace merchant names as primary labels, providing a cleaner and more personalized view.
-- **Interactive Category Summaries**: Tap on any category in the summary tile to instantly filter your transactions for the month.
+- **Interactive Category Summaries**: Tap on any category in the summary tile to instantly filter your transactions.
 - **Smart Categorization**: Learns from your input to automatically assign categories and tags to future transactions from the same merchant.
 
 ## 🏗️ Project Structure
@@ -31,7 +33,7 @@ Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for 
 - **`MerchantMapping.kt`**: Stores user-defined mappings for merchants, categories, and tags.
 
 #### UI Layer (`/ui`)
-- **`HomeScreen.kt`**: The main dashboard featuring interactive summaries, filtered lists, and **Settings** access.
+- **`HomeScreen.kt`**: The main dashboard featuring interactive summaries, filtered lists, **Date Range Picker**, and **Settings** access.
 - **`CategoryScreen.kt`**: Category management with a horizontal **Icon Picker**.
 - **`AddTransactionDialog.kt`**: Enhanced dialog with smart defaults for manual entries.
 - **`Theme.kt`**: Centralized, scalable theme engine supporting multiple palettes.

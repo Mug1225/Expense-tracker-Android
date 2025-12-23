@@ -28,15 +28,27 @@ class TransactionViewModel @Inject constructor(
         _currentTheme.value = theme
     }
 
+    private val _customDateRange = MutableStateFlow<Pair<Long, Long>?>(null)
+    val customDateRange: StateFlow<Pair<Long, Long>?> = _customDateRange.asStateFlow()
+
+    fun setCustomDateRange(start: Long, end: Long) {
+        _customDateRange.value = start to end
+    }
+
+    fun clearCustomDateRange() {
+        _customDateRange.value = null
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val transactions: StateFlow<List<Transaction>> = combine(
         _selectedMonth,
-        _filterCategoryId
-    ) { calendar, filterId ->
-        calendar to filterId
+        _filterCategoryId,
+        _customDateRange
+    ) { calendar, filterId, dateRange ->
+        Triple(calendar, filterId, dateRange)
     }
-        .flatMapLatest { (calendar, filterId) ->
-            val (start, end) = getMonthRange(calendar)
+        .flatMapLatest { (calendar, filterId, dateRange) ->
+            val (start, end) = dateRange ?: getMonthRange(calendar)
             repository.getTransactionsForMonth(start, end).map { list ->
                 if (filterId != null) {
                     list.filter { it.categoryId == filterId }
@@ -48,17 +60,41 @@ class TransactionViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val totalExpense: StateFlow<Double?> = _selectedMonth
-        .flatMapLatest { calendar ->
-            val (start, end) = getMonthRange(calendar)
-            repository.getTotalExpenseForMonth(start, end)
+    val totalExpense: StateFlow<Double?> = combine(
+        _selectedMonth,
+        _customDateRange,
+        _filterCategoryId // Include filterId to update total based on filter
+    ) { calendar, dateRange, filterId ->
+        Triple(calendar, dateRange, filterId)
+    }
+        .flatMapLatest { (calendar, dateRange, filterId) ->
+            val (start, end) = dateRange ?: getMonthRange(calendar)
+            // If we want total to reflect the filtered list, we should probably compute it from the list or use a specific query.
+            // Existing repo method getTotalExpenseForMonth gets ALL expenses for time range.
+            // If category filter is active, we should ideally sum only those.
+            // For now, let's stick to the repo method if no category filter, or manual filter if there is one?
+            // Actually, usually "Total Expense" on screen shows the total of what's visible.
+            // Let's use the transactions flow to derive total to ensure consistency?
+            // But transactions flow is List<Transaction>.
+            // Let's filter manually if filterId is present.
+            if (filterId != null) {
+                repository.getTransactionsForMonth(start, end).map { list ->
+                     list.filter { it.categoryId == filterId }.sumOf { it.amount }
+                }
+            } else {
+                repository.getTotalExpenseForMonth(start, end)
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val categoryExpenses: StateFlow<List<CategoryExpense>> = _selectedMonth
-        .flatMapLatest { calendar ->
-            val (start, end) = getMonthRange(calendar)
+    val categoryExpenses: StateFlow<List<CategoryExpense>> = combine(
+        _selectedMonth,
+        _customDateRange
+    ) { calendar, dateRange ->
+        dateRange ?: getMonthRange(calendar)
+    }
+        .flatMapLatest { (start, end) ->
             repository.getExpensesByCategory(start, end)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -70,14 +106,16 @@ class TransactionViewModel @Inject constructor(
         val newCal = _selectedMonth.value.clone() as Calendar
         newCal.add(Calendar.MONTH, 1)
         _selectedMonth.value = newCal
-        _filterCategoryId.value = null // Reset filter on month change
+        _customDateRange.value = null // Reset custom range on navigation
+        // _filterCategoryId.value = null // REMOVED: Keep filter active
     }
 
     fun prevMonth() {
         val newCal = _selectedMonth.value.clone() as Calendar
         newCal.add(Calendar.MONTH, -1)
         _selectedMonth.value = newCal
-        _filterCategoryId.value = null // Reset filter on month change
+        _customDateRange.value = null // Reset custom range on navigation
+        // _filterCategoryId.value = null // REMOVED: Keep filter active
     }
 
     fun setCategoryFilter(categoryId: Int?) {

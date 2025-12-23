@@ -30,11 +30,13 @@ fun HomeScreen(
     val selectedMonth by viewModel.selectedMonth.collectAsState()
     val categoryExpenses by viewModel.categoryExpenses.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val customDateRange by viewModel.customDateRange.collectAsState()
     val filterCategoryId by viewModel.filterCategoryId.collectAsState()
-
+    
     val context = androidx.compose.ui.platform.LocalContext.current
     var showAddManual by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -52,8 +54,10 @@ fun HomeScreen(
                 
                 MonthPicker(
                     selectedMonth = selectedMonth,
+                    customDateRange = customDateRange,
                     onPrev = { viewModel.prevMonth() },
-                    onNext = { viewModel.nextMonth() }
+                    onNext = { viewModel.nextMonth() },
+                    onDateClick = { showDatePicker = true }
                 )
 
                 if (filterCategoryId != null) {
@@ -133,7 +137,7 @@ fun HomeScreen(
             if (transactions.isEmpty()) {
                 item {
                     Text(
-                        text = if (filterCategoryId != null) "No transactions for this category" else "No transactions found for this month",
+                        text = if (filterCategoryId != null) "No transactions for this category" else "No transactions found" + if (customDateRange != null) " for this date range" else " for this month",
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(16.dp)
                     )
@@ -158,6 +162,26 @@ fun HomeScreen(
                 onThemeSelected = { theme ->
                     viewModel.setTheme(theme)
                     showThemeDialog = false
+                }
+            )
+        }
+
+        if (showDatePicker) {
+            DateRangePickerModal(
+                onDismiss = { showDatePicker = false },
+                onDateSelected = { start, end ->
+                    // Set to end of day for the end date
+                    // DateRangePicker usually gives start of day in UTC.
+                    // We might need to adjust for local time if using Calendar, but here we deal with millis.
+                    // Let's ensure end date covers the full day.
+                    val adjustedEnd = Calendar.getInstance().apply {
+                        timeInMillis = end
+                        set(Calendar.HOUR_OF_DAY, 23)
+                        set(Calendar.MINUTE, 59)
+                    }.timeInMillis
+                    
+                    viewModel.setCustomDateRange(start, adjustedEnd)
+                    showDatePicker = false
                 }
             )
         }
@@ -198,11 +222,14 @@ fun ThemeSelectionDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MonthPicker(
     selectedMonth: Calendar,
+    customDateRange: Pair<Long, Long>?,
     onPrev: () -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
+    onDateClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -212,14 +239,58 @@ fun MonthPicker(
         androidx.compose.material3.IconButton(onClick = onPrev) {
             androidx.compose.material3.Icon(Icons.Default.ChevronLeft, contentDescription = "Prev Month")
         }
+        
+        val displayText = if (customDateRange != null) {
+            val start = DateFormat.format("dd MMM", Date(customDateRange.first))
+            val end = DateFormat.format("dd MMM", Date(customDateRange.second))
+            "$start - $end"
+        } else {
+            DateFormat.format("MMMM yyyy", selectedMonth.time).toString()
+        }
+
         Text(
-            text = DateFormat.format("MMMM yyyy", selectedMonth.time).toString(),
+            text = displayText,
             style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.clickable { onDateClick() }
         )
         androidx.compose.material3.IconButton(onClick = onNext) {
             androidx.compose.material3.Icon(Icons.Default.ChevronRight, contentDescription = "Next Month")
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DateRangePickerModal(
+    onDismiss: () -> Unit,
+    onDateSelected: (Long, Long) -> Unit
+) {
+    val datePickerState = rememberDateRangePickerState()
+    
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val start = datePickerState.selectedStartDateMillis
+                    val end = datePickerState.selectedEndDateMillis
+                    if (start != null && end != null) {
+                        onDateSelected(start, end)
+                    }
+                },
+                enabled = datePickerState.selectedStartDateMillis != null && datePickerState.selectedEndDateMillis != null
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    ) {
+        DateRangePicker(state = datePickerState)
     }
 }
 
