@@ -1,6 +1,7 @@
 package com.example.expensetracker.ui
 
 import android.text.format.DateFormat
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +34,7 @@ fun HomeScreen(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     var showAddManual by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -64,11 +66,20 @@ fun HomeScreen(
                     )
                 }
                 
-                Text(
-                    text = "Total Expense",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Total Expense",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    IconButton(onClick = { showThemeDialog = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    }
+                }
+
                 Text(
                     text = "Rs. ${totalExpense ?: 0.0}",
                     style = MaterialTheme.typography.displayMedium,
@@ -140,7 +151,51 @@ fun HomeScreen(
                 }
             )
         }
+
+        if (showThemeDialog) {
+            ThemeSelectionDialog(
+                onDismiss = { showThemeDialog = false },
+                onThemeSelected = { theme ->
+                    viewModel.setTheme(theme)
+                    showThemeDialog = false
+                }
+            )
+        }
     }
+}
+
+@Composable
+fun ThemeSelectionDialog(
+    onDismiss: () -> Unit,
+    onThemeSelected: (com.example.expensetracker.ui.theme.AppTheme) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Theme") },
+        text = {
+            Column {
+                com.example.expensetracker.ui.theme.AppTheme.values().forEach { theme ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onThemeSelected(theme) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = false, // We don't verify current theme here for simplicity, or we can pass it
+                            onClick = { onThemeSelected(theme) }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(text = theme.name)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable

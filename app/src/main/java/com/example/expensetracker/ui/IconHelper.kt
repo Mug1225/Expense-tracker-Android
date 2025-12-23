@@ -23,6 +23,8 @@ object IconHelper {
         "Investment" to Icons.Default.TrendingUp
     )
 
+    val selectableIcons = allIcons.keys.toList().filter { it != "Default" }.sorted()
+
     fun getIcon(name: String?): ImageVector {
         return allIcons[name] ?: Icons.Default.ShoppingCart
     }

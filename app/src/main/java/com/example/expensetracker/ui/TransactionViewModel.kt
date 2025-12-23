@@ -21,6 +21,13 @@ class TransactionViewModel @Inject constructor(
     private val _filterCategoryId = MutableStateFlow<Int?>(null)
     val filterCategoryId: StateFlow<Int?> = _filterCategoryId.asStateFlow()
 
+    private val _currentTheme = MutableStateFlow(com.example.expensetracker.ui.theme.AppTheme.System)
+    val currentTheme: StateFlow<com.example.expensetracker.ui.theme.AppTheme> = _currentTheme.asStateFlow()
+
+    fun setTheme(theme: com.example.expensetracker.ui.theme.AppTheme) {
+        _currentTheme.value = theme
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val transactions: StateFlow<List<Transaction>> = combine(
         _selectedMonth,

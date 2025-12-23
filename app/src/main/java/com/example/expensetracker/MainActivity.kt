@@ -16,7 +16,9 @@ import com.example.expensetracker.ui.PermissionRequestScreen
 import com.example.expensetracker.ui.CategoryScreen
 import com.example.expensetracker.ui.EditTransactionDialog
 import com.example.expensetracker.ui.TransactionViewModel
-import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
+import com.example.expensetracker.ui.theme.SpendWiseTheme
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
 import com.example.expensetracker.data.Transaction
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,8 +28,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            ExpenseTrackerTheme {
-                MainContent()
+            val viewModel: TransactionViewModel = viewModel()
+            val currentTheme by viewModel.currentTheme.collectAsState()
+            
+            SpendWiseTheme(theme = currentTheme) {
+                MainContent(viewModel)
             }
         }
     }
@@ -89,6 +94,7 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
                 )
             }
         }
+    }
 
         editingTransaction?.let { transaction ->
             EditTransactionDialog(
@@ -108,5 +114,4 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
                 }
             )
         }
-    }
 }

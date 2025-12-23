@@ -1,8 +1,10 @@
 package com.example.expensetracker.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -141,14 +143,36 @@ fun AddEditCategoryDialog(
                     Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Icon Suggestion: $iconName", style = MaterialTheme.typography.bodySmall)
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(8.dp),
-                    horizontalArrangement = Arrangement.Center
+                Text("Select Icon:", style = MaterialTheme.typography.bodySmall)
+                androidx.compose.foundation.lazy.LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
-                    Icon(IconHelper.getIcon(iconName), contentDescription = null, modifier = Modifier.size(48.dp))
+                    items(IconHelper.selectableIcons) { iconKey ->
+                        val isSelected = iconName == iconKey
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .clickable { iconName = iconKey }
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                IconHelper.getIcon(iconKey), 
+                                contentDescription = iconKey,
+                                modifier = Modifier.size(32.dp),
+                                tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .size(4.dp)
+                                        .background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape)
+                                )
+                            }
+                        }
+                    }
                 }
-                Text("Tap icon to change (Icon Picker TBD)", style = MaterialTheme.typography.labelSmall)
             }
         },
         confirmButton = {

@@ -55,10 +55,12 @@ fun AddTransactionDialog(
         confirmButton = {
             Button(onClick = {
                 val amt = amount.toDoubleOrNull() ?: 0.0
-                if (amt > 0 && merchant.isNotBlank()) {
-                    onConfirm(amt, merchant, date, selectedCategoryId, if (tags.isNotBlank()) tags else null)
+                if (amt > 0.0) {
+                    val finalMerchant = if (merchant.isBlank()) "Manual" else merchant
+                    val finalTags = if (tags.isNotBlank()) tags else null
+                    onConfirm(amt, finalMerchant, date, selectedCategoryId, finalTags)
                 }
-            }) {
+            }, enabled = (amount.toDoubleOrNull() ?: 0.0) > 0.0) {
                 Text("Add")
             }
         },
