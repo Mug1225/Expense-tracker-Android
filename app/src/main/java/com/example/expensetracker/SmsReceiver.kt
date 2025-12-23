@@ -44,6 +44,7 @@ class SmsReceiver : BroadcastReceiver() {
                             val mapping = repository.getMappingForMerchant(transaction.merchant)
                             if (mapping != null) {
                                 transaction.categoryId = mapping.categoryId
+                                transaction.tags = mapping.tags
                             }
                             
                             repository.addTransaction(transaction)

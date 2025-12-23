@@ -9,36 +9,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Category
-import com.example.expensetracker.data.Transaction
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditTransactionDialog(
-    transaction: Transaction,
+fun AddTransactionDialog(
     categories: List<Category>,
     onDismiss: () -> Unit,
-    onSave: (Transaction, Int?, String?) -> Unit, // Int? is categoryId, String? is tags
-    onDelete: (Transaction) -> Unit
+    onConfirm: (Double, String, Long, Int?, String?) -> Unit
 ) {
-    var amount by remember { mutableStateOf(transaction.amount.toString()) }
-    var merchant by remember { mutableStateOf(transaction.merchant) }
-    var selectedCategoryId by remember { mutableStateOf(transaction.categoryId) }
-    var tags by remember { mutableStateOf(transaction.tags ?: "") }
-    var saveMapping by remember { mutableStateOf(false) }
+    var amount by remember { mutableStateOf("") }
+    var merchant by remember { mutableStateOf("") }
+    var tags by remember { mutableStateOf("") }
+    var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
+    var date by remember { mutableStateOf(Calendar.getInstance().timeInMillis) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Transaction") },
+        title = { Text("Add Manual Transaction") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Original Message:", style = MaterialTheme.typography.labelLarge)
-                Text(transaction.fullMessage, style = MaterialTheme.typography.bodySmall)
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
                 TextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth())
                 TextField(value = merchant, onValueChange = { merchant = it }, label = { Text("Merchant") }, modifier = Modifier.fillMaxWidth())
                 TextField(value = tags, onValueChange = { tags = it }, label = { Text("Tags (comma separated)") }, modifier = Modifier.fillMaxWidth())
@@ -57,37 +50,20 @@ fun EditTransactionDialog(
                         Text(category.name)
                     }
                 }
-                
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = saveMapping, onCheckedChange = { saveMapping = it })
-                    Text("Always use this details for '$merchant'")
-                }
             }
         },
         confirmButton = {
             Button(onClick = {
-                val updated = transaction.copy(
-                    amount = amount.toDoubleOrNull() ?: transaction.amount,
-                    merchant = merchant,
-                    categoryId = selectedCategoryId,
-                    isEdited = true,
-                    tags = if (tags.isNotBlank()) tags else null
-                )
-                onSave(updated, if (saveMapping) selectedCategoryId else null, if (saveMapping) tags else null)
+                val amt = amount.toDoubleOrNull() ?: 0.0
+                if (amt > 0 && merchant.isNotBlank()) {
+                    onConfirm(amt, merchant, date, selectedCategoryId, if (tags.isNotBlank()) tags else null)
+                }
             }) {
-                Text("Save")
+                Text("Add")
             }
         },
         dismissButton = {
-            Row {
-                TextButton(
-                    onClick = { onDelete(transaction) },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete")
-                }
-                TextButton(onClick = onDismiss) { Text("Cancel") }
-            }
+            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }

@@ -21,6 +21,8 @@ fun CategoryScreen(
 ) {
     val categories by viewModel.categories.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingCategory by remember { mutableStateOf<Category?>(null) }
+    var deletingCategory by remember { mutableStateOf<Category?>(null) }
 
     Scaffold(
         topBar = {
@@ -45,7 +47,9 @@ fun CategoryScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(categories) { category ->
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { editingCategory = category }
+                ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -63,11 +67,42 @@ fun CategoryScreen(
         }
 
         if (showAddDialog) {
-            AddCategoryDialog(
+            AddEditCategoryDialog(
                 onDismiss = { showAddDialog = false },
                 onConfirm = { name, icon ->
-                    viewModel.addCategory(name, icon)
-                    showAddDialog = false
+                    viewModel.addCategory(name, icon) { success ->
+                        if (success) showAddDialog = false
+                        // Else: Show error (handled in dialog below)
+                    }
+                },
+                viewModel = viewModel
+            )
+        }
+
+        editingCategory?.let { category ->
+            AddEditCategoryDialog(
+                category = category,
+                onDismiss = { editingCategory = null },
+                onConfirm = { name, icon ->
+                    viewModel.updateCategory(category.copy(name = name, iconName = icon)) { success ->
+                        if (success) editingCategory = null
+                    }
+                },
+                onDelete = { 
+                    deletingCategory = category
+                    editingCategory = null
+                },
+                viewModel = viewModel
+            )
+        }
+
+        deletingCategory?.let { category ->
+            DeleteCategoryDialog(
+                category = category,
+                onDismiss = { deletingCategory = null },
+                onConfirm = { unlink ->
+                    viewModel.deleteCategory(category, unlink)
+                    deletingCategory = null
                 }
             )
         }
@@ -75,16 +110,21 @@ fun CategoryScreen(
 }
 
 @Composable
-fun AddCategoryDialog(
+fun AddEditCategoryDialog(
+    category: Category? = null,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, String) -> Unit,
+    onDelete: (() -> Unit)? = null,
+    viewModel: TransactionViewModel
 ) {
-    var name by remember { mutableStateOf("") }
-    var iconName by remember { mutableStateOf("Default") }
+    var name by remember { mutableStateOf(category?.name ?: "") }
+    var iconName by remember { mutableStateOf(category?.iconName ?: "Default") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Category") },
+        title = { Text(if (category == null) "Add Category" else "Edit Category") },
         text = {
             Column {
                 TextField(
@@ -92,14 +132,19 @@ fun AddCategoryDialog(
                     onValueChange = { 
                         name = it
                         iconName = IconHelper.suggestIcon(it)
+                        errorMessage = null
                     },
-                    label = { Text("Category Name") }
+                    label = { Text("Category Name") },
+                    isError = errorMessage != null
                 )
+                if (errorMessage != null) {
+                    Text(errorMessage!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Icon Suggestion: $iconName", style = MaterialTheme.typography.bodySmall)
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround
+                    modifier = Modifier.fillMaxWidth().padding(8.dp),
+                    horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(IconHelper.getIcon(iconName), contentDescription = null, modifier = Modifier.size(48.dp))
                 }
@@ -107,10 +152,58 @@ fun AddCategoryDialog(
             }
         },
         confirmButton = {
-            Button(onClick = { if (name.isNotBlank()) onConfirm(name, iconName) }) {
-                Text("Add")
+            Button(onClick = { 
+                if (name.isBlank()) {
+                    errorMessage = "Name cannot be empty"
+                } else {
+                    onConfirm(name, iconName)
+                }
+            }) {
+                Text(if (category == null) "Add" else "Save")
             }
         },
+        dismissButton = {
+            Row {
+                if (onDelete != null) {
+                    TextButton(onClick = onDelete, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                        Text("Delete")
+                    }
+                }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        }
+    )
+}
+
+@Composable
+fun DeleteCategoryDialog(
+    category: Category,
+    onDismiss: () -> Unit,
+    onConfirm: (Boolean) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Category") },
+        text = {
+            Column {
+                Text("How would you like to handle existing transactions for '${category.name}'?")
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { onConfirm(false) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Keep money spent (Transactions keep category label)")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { onConfirm(true) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Clear categories (Transactions become unnamed)")
+                }
+            }
+        },
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }

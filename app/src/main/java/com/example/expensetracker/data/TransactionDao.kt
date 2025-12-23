@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Delete
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -20,11 +21,17 @@ interface TransactionDao {
     @Update
     suspend fun updateTransaction(transaction: Transaction)
 
+    @Delete
+    suspend fun deleteTransaction(transaction: Transaction)
+
     @Query("SELECT SUM(amount) FROM transactions WHERE date >= :startTime AND date <= :endTime")
     fun getTotalExpenseForMonth(startTime: Long, endTime: Long): Flow<Double?>
 
     @Query("SELECT categoryId, SUM(amount) as totalAmount FROM transactions WHERE date >= :startTime AND date <= :endTime GROUP BY categoryId")
     fun getExpensesByCategory(startTime: Long, endTime: Long): Flow<List<CategoryExpense>>
+
+    @Query("UPDATE transactions SET tags = :tags WHERE merchant = :merchantName")
+    suspend fun updateTagsForMerchant(merchantName: String, tags: String?)
 }
 
 data class CategoryExpense(

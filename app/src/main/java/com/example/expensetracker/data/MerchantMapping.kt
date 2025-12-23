@@ -6,5 +6,6 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "merchant_mappings")
 data class MerchantMapping(
     @PrimaryKey val merchantName: String,
-    val categoryId: Int
+    val categoryId: Int,
+    val tags: String? = null
 )

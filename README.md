@@ -1,69 +1,49 @@
-# Expense-tracker-Android
-This repository contains the containerized application of the Expense-tracker app and another container to install and run the apk.
+# SpendWise 🚀
 
-# Expense Tracker Android App
+SpendWise is a premium, native Android application designed to make expense tracking effortless. By automatically parsing incoming SMS alerts from banks and merchants, SpendWise provides real-time insights into your spending habits with a clean, modern interface.
 
-A native Android application that automatically tracks your expenses by parsing incoming SMS messages from banks. Built with Kotlin, Jetpack Compose, Room Database, and Hilt for Dependency Injection.
+Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for Dependency Injection.
 
-## Project Structure
+## ✨ Key Features
+
+- **Automated SMS Tracking**: Instantly logs expenses by parsing bank SMS alerts using optimized regex logic.
+- **🏷️ Merchant Tagging**: Organize your spending with multiple tags. Tags replace merchant names as primary labels, providing a cleaner and more personalized view.
+- **📊 Interactive Category Summaries**: Tap on any category in the summary tile to instantly filter your transactions for the month.
+- **🧠 Smart Categorization**: Learns from your input to automatically assign categories and tags to future transactions from the same merchant.
+- **🛠️ Manual Management**: Add manual transactions, edit parsed data, and manage categories with custom icons and intelligent deletion strategies.
+- **📅 Month-wise Analysis**: Seamlessly navigate through months with reactive spending summaries and aggregated category data.
+
+## 🏗️ Project Structure
 
 ### Root Directory
-- **Containerfile**: Dockerfile to create a reproducible Android build environment.
-- **build.gradle.kts**: Top-level build configuration.
-- **settings.gradle.kts**: Project module settings.
+- **Containerfile**: Dockerfile for a reproducible Android build environment.
+- **compose.yaml**: Orchestration for the containerized Android emulator.
 
 ### Core Components (`app/src/main/java/com/example/expensetracker/`)
 
-#### Application Entry Points
-- **`ExpenseTrackerApplication.kt`**: The application class annotated with `@HiltAndroidApp`. Triggers Dagger Hilt's code generation for dependency injection.
-- **`MainActivity.kt`**: The single Activity for the app. It handles:
-  - Checking `READ_SMS` and `RECEIVE_SMS` permissions.
-  - Setting up the Jetpack Compose UI content.
-  - Navigating between `PermissionRequestScreen` and `HomeScreen` based on permission state.
-- **`SmsReceiver.kt`**: A `BroadcastReceiver` that listens for `android.provider.Telephony.SMS_RECEIVED`.
-  - Intercepts incoming SMS.
-  - Uses `SmsParser` to check for transaction details.
-  - Asynchronously saves valid transactions to the database via `TransactionRepository`.
-
-#### Core Logic (`/core`)
-- **`SmsParser.kt`**: A utility object containing Regex logic.
-  - `parseSms()`: Extracts amount, merchant name, and date from raw SMS text. Optimized for formats like "Rs. 500 debited on 22-Dec to AMAZON".
+#### Application Entry & Logic
+- **`MainActivity.kt`**: The single Activity managing navigation, permissions, and the SpendWise UI.
+- **`SmsReceiver.kt`**: Listens for incoming SMS alerts and triggers the parsing/auto-categorization engine.
+- **`SmsParser.kt`**: Core utility for extracting financial details from raw message text.
 
 #### Data Layer (`/data`)
-- **`Transaction.kt`**: The Room Entity. Includes `categoryId` and `isEdited` flags.
-- **`Category.kt`**: Entity for user-defined expense categories with Material Icon support.
-- **`MerchantMapping.kt`**: Maps specific merchant names to categories for auto-assignment.
-- **`TransactionDao.kt` / `AdvancedDaos.kt`**: DAOs for complex queries including month-wise filtering and spending aggregation by category.
-- **`AppDatabase.kt`**: The Room Database abstract class managing all three entities.
-- **`TransactionRepository.kt`**: Orchestrates data flow between DAOs and UI, handling auto-categorization logic.
-
-#### Dependency Injection (`/di`)
-- **`DatabaseModule.kt`**: Hilt module providing database and DAO instances.
+- **`Transaction.kt`**: Room Entity supporting amounts, dates, categories, and custom **tags**.
+- **`MerchantMapping.kt`**: Stores user-defined mappings for merchants, categories, and tags to enable "smart learning."
+- **`AdvancedDaos.kt`**: DAOs for complex queries, including month-wise filtering and spending aggregation.
 
 #### UI Layer (`/ui`)
-- **`TransactionViewModel.kt`**: Manages month-based filtering, reactive spending summaries, and transaction updates.
-- **`HomeScreen.kt`**: Dashboard featuring a month navigator, category spending summaries, and the transaction list.
-- **`CategoryScreen.kt`**: Interface for managing categories with icon suggestions based on category names.
-- **`EditTransactionDialog.kt`**: Provides manual override for transaction details and merchant-to-category mapping.
-- **`IconHelper.kt`**: Maps category names to relevant Material Icons and provides suggestions.
-- **`PermissionRequestScreen.kt`**: Screens explaining the need for SMS permissions.
+- **`HomeScreen.kt`**: The main dashboard featuring interactive summaries, filtered transaction lists, and a sleek branding header.
+- **`CategoryScreen.kt`**: Full category management with specialized deletion strategies (keep vs. unlink spending).
+- **`EditTransactionDialog.kt`**: Comprehensive dialog for overriding transaction data, tags, and merchant mappings.
+- **`AddTransactionDialog.kt`**: Fluid interface for manual transaction entry with full tag support.
 
-## Key Features
-
-- **Automated SMS Tracking**: Parses bank SMS alerts to log expenses instantly.
-- **Smart Categorization**: Learns from manual edits to auto-assign categories to future transactions from the same merchant.
-- **Category Management**: Create custom categories with a library of Material Icons.
-- **Month-wise Analysis**: Navigate through months to see total spending and category breakdowns.
-- **Manual Editing**: Correct parsed data or manually categorize any transaction.
-
-
-## Build Instructions
+## 🛠️ Build Instructions
 
 ### Standard Build
-Open the project in Android Studio and run on an emulator or device.
+Open the project in **Android Studio** and run on an emulator or physical device.
 
-### Containerized Build (Podman)
-You can build the APK without installing Android Studio:
+### Containerized Build (Podman/Docker)
+Build the APK without any local Android dependencies:
 
 ```bash
 # 1. Build the builder image
@@ -72,24 +52,20 @@ podman build -t android-builder -f Containerfile .
 # 2. Compile the APK
 podman run --rm -v ".:/app" android-builder gradle assembleDebug
 ```
-The APK will be available at `app/build/outputs/apk/debug/app-debug.apk`.
+The final APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
 
-### Running with Containerized Emulator
-
-You can run the APK in a containerized Android emulator without installing Android Studio.
+### 📱 Running with Containerized Emulator
 
 1. **Start the Emulator**:
    ```bash
    podman compose up -d
    ```
 
-2. **Access the Emulator UI**:
-   Open [http://localhost:6080](http://localhost:6080) in your web browser.
+2. **Access the UI**:
+   Open [http://localhost:6080](http://localhost:6080) in your browser.
 
-3. **Install and Run the APK**:
-   If you have `adb` installed locally:
+3. **Install the APK**:
    ```bash
    adb connect localhost:5555
    adb install app/build/outputs/apk/debug/app-debug.apk
    ```
-   Or use the built-in ADB tools if you prefer.

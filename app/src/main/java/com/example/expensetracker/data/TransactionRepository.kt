@@ -33,12 +33,28 @@ class TransactionRepository @Inject constructor(
         categoryDao.insertCategory(category)
     }
 
-    suspend fun deleteCategory(category: Category) {
+    suspend fun updateCategory(category: Category) {
+        categoryDao.updateCategory(category)
+    }
+
+    suspend fun deleteCategoryWithStrategy(category: Category, unlinkTransactions: Boolean) {
+        if (unlinkTransactions) {
+            categoryDao.unlinkTransactions(category.id)
+        }
         categoryDao.deleteCategory(category)
+    }
+
+    suspend fun isCategoryNameDuplicate(name: String): Boolean {
+        return categoryDao.isNameDuplicate(name)
+    }
+
+    suspend fun deleteTransaction(transaction: Transaction) {
+        transactionDao.deleteTransaction(transaction)
     }
 
     suspend fun addMapping(mapping: MerchantMapping) {
         merchantMappingDao.insertMapping(mapping)
+        transactionDao.updateTagsForMerchant(mapping.merchantName, mapping.tags)
     }
 
     suspend fun getMappingForMerchant(merchantName: String) = 

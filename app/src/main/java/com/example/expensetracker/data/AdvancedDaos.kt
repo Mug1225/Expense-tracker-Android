@@ -11,11 +11,20 @@ interface CategoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: Category)
 
+    @Update
+    suspend fun updateCategory(category: Category)
+
     @Delete
     suspend fun deleteCategory(category: Category)
 
     @Query("SELECT * FROM categories WHERE id = :id")
     suspend fun getCategoryById(id: Int): Category?
+
+    @Query("SELECT EXISTS(SELECT 1 FROM categories WHERE name = :name)")
+    suspend fun isNameDuplicate(name: String): Boolean
+
+    @Query("UPDATE transactions SET categoryId = NULL WHERE categoryId = :categoryId")
+    suspend fun unlinkTransactions(categoryId: Int)
 }
 
 @Dao

@@ -18,11 +18,25 @@ class TransactionViewModel @Inject constructor(
     private val _selectedMonth = MutableStateFlow(Calendar.getInstance())
     val selectedMonth: StateFlow<Calendar> = _selectedMonth.asStateFlow()
 
+    private val _filterCategoryId = MutableStateFlow<Int?>(null)
+    val filterCategoryId: StateFlow<Int?> = _filterCategoryId.asStateFlow()
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    val transactions: StateFlow<List<Transaction>> = _selectedMonth
-        .flatMapLatest { calendar ->
+    val transactions: StateFlow<List<Transaction>> = combine(
+        _selectedMonth,
+        _filterCategoryId
+    ) { calendar, filterId ->
+        calendar to filterId
+    }
+        .flatMapLatest { (calendar, filterId) ->
             val (start, end) = getMonthRange(calendar)
-            repository.getTransactionsForMonth(start, end)
+            repository.getTransactionsForMonth(start, end).map { list ->
+                if (filterId != null) {
+                    list.filter { it.categoryId == filterId }
+                } else {
+                    list
+                }
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -49,12 +63,18 @@ class TransactionViewModel @Inject constructor(
         val newCal = _selectedMonth.value.clone() as Calendar
         newCal.add(Calendar.MONTH, 1)
         _selectedMonth.value = newCal
+        _filterCategoryId.value = null // Reset filter on month change
     }
 
     fun prevMonth() {
         val newCal = _selectedMonth.value.clone() as Calendar
         newCal.add(Calendar.MONTH, -1)
         _selectedMonth.value = newCal
+        _filterCategoryId.value = null // Reset filter on month change
+    }
+
+    fun setCategoryFilter(categoryId: Int?) {
+        _filterCategoryId.value = categoryId
     }
 
     fun updateTransaction(transaction: Transaction) {
@@ -63,15 +83,57 @@ class TransactionViewModel @Inject constructor(
         }
     }
 
-    fun addCategory(name: String, iconName: String) {
+    fun deleteTransaction(transaction: Transaction) {
         viewModelScope.launch {
-            repository.addCategory(Category(name = name, iconName = iconName))
+            repository.deleteTransaction(transaction)
         }
     }
 
-    fun saveMerchantMapping(merchantName: String, categoryId: Int) {
+    fun addCategory(name: String, iconName: String, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
-            repository.addMapping(MerchantMapping(merchantName, categoryId))
+            if (repository.isCategoryNameDuplicate(name)) {
+                onResult(false)
+            } else {
+                repository.addCategory(Category(name = name, iconName = iconName))
+                onResult(true)
+            }
+        }
+    }
+
+    fun updateCategory(category: Category, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            // Unique check if name changed
+            repository.updateCategory(category)
+            onResult(true)
+        }
+    }
+
+    fun deleteCategory(category: Category, unlinkTransactions: Boolean) {
+        viewModelScope.launch {
+            repository.deleteCategoryWithStrategy(category, unlinkTransactions)
+        }
+    }
+
+    fun addManualTransaction(amount: Double, merchant: String, date: Long, categoryId: Int?, tags: String? = null) {
+        viewModelScope.launch {
+            repository.addTransaction(
+                Transaction(
+                    amount = amount,
+                    merchant = merchant,
+                    date = date,
+                    sender = "Manual",
+                    fullMessage = "Manually entered",
+                    categoryId = categoryId,
+                    isEdited = true,
+                    tags = tags
+                )
+            )
+        }
+    }
+
+    fun saveMerchantMapping(merchantName: String, categoryId: Int, tags: String? = null) {
+        viewModelScope.launch {
+            repository.addMapping(MerchantMapping(merchantName, categoryId, tags))
         }
     }
 

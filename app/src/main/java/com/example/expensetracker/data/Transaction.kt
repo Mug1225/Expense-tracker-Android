@@ -13,5 +13,6 @@ data class Transaction(
     val sender: String, // Bank sender ID
     val fullMessage: String,
     var categoryId: Int? = null,
-    var isEdited: Boolean = false
+    var isEdited: Boolean = false,
+    var tags: String? = null
 )

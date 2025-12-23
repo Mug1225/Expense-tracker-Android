@@ -95,11 +95,15 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
                 transaction = transaction,
                 categories = categories,
                 onDismiss = { editingTransaction = null },
-                onSave = { updated, mappingCategoryId ->
+                onSave = { updated, mappingCategoryId, tags ->
                     viewModel.updateTransaction(updated)
                     mappingCategoryId?.let { 
-                        viewModel.saveMerchantMapping(updated.merchant, it)
+                        viewModel.saveMerchantMapping(updated.merchant, it, tags)
                     }
+                    editingTransaction = null
+                },
+                onDelete = {
+                    viewModel.deleteTransaction(it)
                     editingTransaction = null
                 }
             )
