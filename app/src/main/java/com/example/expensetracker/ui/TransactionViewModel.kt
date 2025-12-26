@@ -201,6 +201,25 @@ class TransactionViewModel @Inject constructor(
         }
     }
 
+    fun importFromSms(messages: List<com.example.expensetracker.data.SmsMessage>) {
+        viewModelScope.launch {
+            val transactions = messages.mapNotNull { msg ->
+                // Reuse existing parser
+                com.example.expensetracker.core.SmsParser.parseSms(msg.sender, msg.body, msg.date)
+            }
+            
+            // Apply auto-categorization
+            transactions.forEach { transaction ->
+                val mapping = repository.getMappingForMerchant(transaction.merchant)
+                if (mapping != null) {
+                    transaction.categoryId = mapping.categoryId
+                    transaction.tags = mapping.tags
+                }
+                repository.addTransaction(transaction)
+            }
+        }
+    }
+
     fun saveMerchantMapping(merchantName: String, categoryId: Int, tags: String? = null) {
         viewModelScope.launch {
             repository.addMapping(MerchantMapping(merchantName, categoryId, tags))

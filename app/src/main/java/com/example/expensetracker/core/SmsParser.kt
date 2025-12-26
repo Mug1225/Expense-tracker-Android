@@ -1,42 +1,57 @@
 package com.example.expensetracker.core
 
 import com.example.expensetracker.data.Transaction
-import java.util.regex.Pattern
 
+/**
+ * Enhanced SMS Parser for Indian Bank Transaction Messages
+ * Supports: HDFC, ICICI, SBI, Axis and other major banks
+ * Handles: UPI, NEFT, IMPS, Card, ATM, POS transactions
+ */
 object SmsParser {
 
-    // Regex to capture amount: "Rs. 123.00", "INR 123", "Rs 123"
-    // Also captures merchant name often found after "at" or "to"
-    // This is a simplified parser and would need refinement for specific banks.
-    
-    // Format: "... debited ... Rs. 500.00 on 22-Dec to AMAZON PAY ..."
-    
-    private val AMOUNT_PATTERN = Pattern.compile("(?i)Rs\\.?\\s*([0-9,]+(?:\\.[0-9]{2})?)")
-    private val DATE_PATTERN = Pattern.compile("(?i)on\\s+([0-9]{1,2}-[A-Za-z]{3}(?:-[0-9]{2,4})?)")
-    private val MERCHANT_PATTERN = Pattern.compile("(?i)to\\s+(.+?)(?:\\.|\\s{2,}|$)")
-
+    /**
+     * Main parsing function - parses SMS and returns Transaction if it's a DEBIT transaction
+     * Credit transactions are parsed but not returned (for future income tracking)
+     */
     fun parseSms(sender: String, message: String, timestamp: Long): Transaction? {
-        if (!message.contains("debited", ignoreCase = true) && !message.contains("spent", ignoreCase = true)) {
-             return null
-        }
-
-        val amountMatcher = AMOUNT_PATTERN.matcher(message)
-        val amount = if (amountMatcher.find()) {
-            amountMatcher.group(1)?.replace(",", "")?.toDoubleOrNull() ?: 0.0
-        } else {
+        // Check if this is a transaction message
+        if (!BankSmsPatterns.isTransactionMessage(message)) {
             return null
         }
 
-        val dateMatcher = DATE_PATTERN.matcher(message)
-        // We still use current timestamp as primary, but we could try to parse the date string if needed.
-        // For now, let's just stick to extracting the merchant name.
+        // Determine transaction type
+        val transactionType = BankSmsPatterns.getTransactionType(message)
         
-        val merchantMatcher = MERCHANT_PATTERN.matcher(message)
-        val merchant = if (merchantMatcher.find()) {
-            merchantMatcher.group(1)?.trim() ?: "Unknown"
-        } else {
-            "Unknown"
+        // Only process DEBIT transactions for expense tracking
+        if (transactionType != "DEBIT") {
+            return null
         }
+
+        // Extract amount
+        val amount = extractAmount(message) ?: run {
+            return null
+        }
+
+        // Extract merchant/payee
+        val merchant = extractMerchant(message)
+
+        // Extract transaction mode
+        val transactionMode = BankSmsPatterns.getTransactionMode(message)
+
+        // Extract reference number (UPI/NEFT/IMPS)
+        val referenceNumber = extractReferenceNumber(message, transactionMode)
+
+        // Extract UPI ID if it's a UPI transaction
+        val upiId = if (transactionMode == "UPI") extractUpiId(message) else null
+
+        // Extract account number (last 4 digits)
+        val accountNumber = extractAccountNumber(message)
+
+        // Extract date string (optional - we use timestamp as primary)
+        val parsedDate = extractDate(message)
+
+        // Identify bank
+        val bank = BankSmsPatterns.identifyBank(sender)
 
         return Transaction(
             amount = amount,
@@ -45,5 +60,144 @@ object SmsParser {
             sender = sender,
             fullMessage = message
         )
+    }
+
+    /**
+     * Extracts amount from message
+     */
+    private fun extractAmount(message: String): Double? {
+        // Try standard amount pattern first
+        var matcher = BankSmsPatterns.AMOUNT_PATTERN.matcher(message)
+        if (matcher.find()) {
+            val amountStr = matcher.group(1)?.replace(",", "")
+            return amountStr?.toDoubleOrNull()
+        }
+
+        // Try "by/of" pattern (e.g., "debited by 500.00")
+        matcher = BankSmsPatterns.AMOUNT_BY_OF_PATTERN.matcher(message)
+        if (matcher.find()) {
+            val amountStr = matcher.group(1)?.replace(",", "")
+            return amountStr?.toDoubleOrNull()
+        }
+
+        return null
+    }
+
+    /**
+     * Extracts merchant/payee name from message
+     */
+    private fun extractMerchant(message: String): String {
+        // Try "to" pattern (for debits/payments)
+        var matcher = BankSmsPatterns.PAYEE_TO_PATTERN.matcher(message)
+        if (matcher.find()) {
+            val merchant = matcher.group(1)?.trim()
+            if (!merchant.isNullOrBlank()) {
+                return cleanMerchantName(merchant)
+            }
+        }
+
+        // Try "at" pattern (for POS transactions)
+        matcher = BankSmsPatterns.MERCHANT_AT_PATTERN.matcher(message)
+        if (matcher.find()) {
+            val merchant = matcher.group(1)?.trim()
+            if (!merchant.isNullOrBlank()) {
+                return cleanMerchantName(merchant)
+            }
+        }
+
+        // Try extracting UPI ID as fallback
+        val upiId = extractUpiId(message)
+        if (upiId != null) {
+            // Extract name before @ symbol
+            val name = upiId.substringBefore("@")
+            return cleanMerchantName(name)
+        }
+
+        return "Unknown"
+    }
+
+    /**
+     * Cleans up merchant name (removes extra characters, capitalizes properly)
+     */
+    private fun cleanMerchantName(name: String): String {
+        return name
+            .replace(Regex("[^a-zA-Z0-9\\s&'-]"), "")
+            .trim()
+            .split(" ")
+            .joinToString(" ") { word ->
+                if (word.length <= 3) word.uppercase()
+                else word.lowercase().replaceFirstChar { it.uppercase() }
+            }
+            .take(30) // Limit length
+    }
+
+    /**
+     * Extracts date string from message
+     */
+    private fun extractDate(message: String): String? {
+        // Try different date patterns
+        var matcher = BankSmsPatterns.DATE_PATTERN_DMY.matcher(message)
+        if (matcher.find()) {
+            return matcher.group(1)
+        }
+
+        matcher = BankSmsPatterns.DATE_PATTERN_SPACE.matcher(message)
+        if (matcher.find()) {
+            return matcher.group(1)
+        }
+
+        matcher = BankSmsPatterns.DATE_PATTERN_SLASH.matcher(message)
+        if (matcher.find()) {
+            return matcher.group(1)
+        }
+
+        return null
+    }
+
+    /**
+     * Extracts account number (last 4 digits)
+     */
+    private fun extractAccountNumber(message: String): String? {
+        val matcher = BankSmsPatterns.ACCOUNT_PATTERN.matcher(message)
+        if (matcher.find()) {
+            return matcher.group(1)
+        }
+        return null
+    }
+
+    /**
+     * Extracts UPI ID from message
+     */
+    private fun extractUpiId(message: String): String? {
+        val matcher = BankSmsPatterns.UPI_ID_PATTERN.matcher(message)
+        if (matcher.find()) {
+            val upiId = matcher.group(1)
+            // Validate it looks like a UPI ID (has @ and reasonable format)
+            if (upiId?.contains("@") == true) {
+                return upiId
+            }
+        }
+        return null
+    }
+
+    /**
+     * Extracts reference number based on transaction mode
+     */
+    private fun extractReferenceNumber(message: String, mode: String?): String? {
+        return when (mode) {
+            "UPI" -> {
+                val matcher = BankSmsPatterns.UPI_REF_PATTERN.matcher(message)
+                if (matcher.find()) matcher.group(1) else null
+            }
+            "NEFT" -> {
+                val matcher = BankSmsPatterns.UTR_PATTERN.matcher(message)
+                if (matcher.find()) matcher.group(1) else null
+            }
+            "IMPS" -> {
+                val matcher = BankSmsPatterns.RRN_PATTERN.matcher(message)
+                if (matcher.find()) matcher.group(1) else null
+            }
+            else -> null
+        }
     }
 }

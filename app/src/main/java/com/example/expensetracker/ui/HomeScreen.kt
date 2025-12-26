@@ -24,6 +24,7 @@ fun HomeScreen(
     viewModel: TransactionViewModel = viewModel(),
     onCategoryClick: () -> Unit,
     onSearchClick: () -> Unit,
+    onSmsImportClick: () -> Unit,
     onTransactionClick: (Transaction) -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -39,6 +40,7 @@ fun HomeScreen(
     var showAddManual by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -66,6 +68,26 @@ fun HomeScreen(
                         }
                         IconButton(onClick = { showThemeDialog = true }) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                        Box {
+                            IconButton(onClick = { showOverflowMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "More")
+                            }
+                            DropdownMenu(
+                                expanded = showOverflowMenu,
+                                onDismissRequest = { showOverflowMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Import from SMS") },
+                                    onClick = {
+                                        onSmsImportClick()
+                                        showOverflowMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Message, contentDescription = null)
+                                    }
+                                )
+                            }
                         }
                     }
                 }

@@ -20,6 +20,7 @@ import com.example.expensetracker.ui.AnalyticsScreen
 import com.example.expensetracker.ui.PermissionRequestScreen
 import com.example.expensetracker.ui.CategoryScreen
 import com.example.expensetracker.ui.SearchScreen
+import com.example.expensetracker.ui.SmsImportScreen
 import com.example.expensetracker.ui.EditTransactionDialog
 import com.example.expensetracker.ui.TransactionViewModel
 import com.example.expensetracker.ui.theme.SpendWiseTheme
@@ -124,6 +125,7 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
                             viewModel = viewModel,
                             onCategoryClick = { currentScreen = "categories" },
                             onSearchClick = { currentScreen = "search" },
+                            onSmsImportClick = { currentScreen = "smsImport" },
                             onTransactionClick = { editingTransaction = it }
                         )
                         "analytics" -> AnalyticsScreen(
@@ -144,6 +146,13 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
                             },
                             onMerchantSelected = { merchantName ->
                                 viewModel.setMerchantFilter(merchantName)
+                            }
+                        )
+                        "smsImport" -> SmsImportScreen(
+                            viewModel = viewModel,
+                            onBack = {
+                                currentScreen = "home"
+                                currentTab = 0
                             }
                         )
                     }

@@ -14,7 +14,8 @@ Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for 
 - **🎨 Dynamic Themes**: Personalize your experience with premium themes including **Emerald**, **Ocean**, and **Charcoal**.
 - **⚙️ Composite Filtering**: Combine date ranges with category or merchant filters to analyze specific spending patterns.
 - **🏷️ Custom Categories**: Create categories and choose from a library of icons to visually organize your spending.
-- **Automated SMS Tracking**: Instantly logs expenses by parsing bank SMS alerts using optimized regex logic.
+- **📩 Enhanced SMS Parsing**: Automatically extracts transaction details (Amount, Merchant, Date) from HDFC, SBI, ICICI, Axis, and other bank SMS. Supports UPI, NEFT, IMPS, ATM, and Card transactions.
+- **🛡️ Smart Filtering**: Intelligently identifies and processes only **Debit** transactions for accurate expense tracking, filtering out promos and credit alerts.
 - **Merchant Tagging**: Organize your spending with multiple tags. Tags replace merchant names as primary labels, providing a cleaner and more personalized view.
 - **Interactive Category Summaries**: Tap on any category in the summary tile to instantly filter your transactions.
 - **Hardware Back Button**: Navigate naturally from Analytics back to Home using your device's back button.
