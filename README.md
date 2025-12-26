@@ -6,15 +6,18 @@ Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for 
 
 ## ✨ Key Features
 
-- **🎨 Dynamic Themes**: Personalize your experience with premium themes including **Emerald**, **Ocean**, and **Charcoal**. Access them via the Settings gear.
-- **📅 Custom Date Ranges**: Tap the month header to select specific dates (e.g., "Last 2 Weeks") for precise expense tracking.
-- **⚙️ Composite Filtering**: Combine date ranges with category filters to see exactly what you spent on "Food" during your "Vacation".
+- **📊 Visual Analytics**: Dedicated Analytics tab with **Donut Chart** for spending breakdown and **Trend Line** for daily spending patterns. Filter charts by category using the dropdown menu.
+- **🔍 Merchant Search**: Quickly find and filter transactions by merchant. Search through all unique merchants and tap to view their transactions.
+- **📅 Custom Date Ranges**: Tap the month header to select specific dates (e.g., "Last 2 Weeks") for precise expense tracking. Works across both Home and Analytics screens.
+- **✏️ Full Transaction Editing**: Edit transaction amounts, categories, merchants, tags, and even **dates**. Perfect for backdating expenses or correcting mistakes.
+- **➕ Smart Manual Entry**: Add transactions with a date picker. Merchant and tags are optional—just enter the amount and date to get started.
+- **🎨 Dynamic Themes**: Personalize your experience with premium themes including **Emerald**, **Ocean**, and **Charcoal**.
+- **⚙️ Composite Filtering**: Combine date ranges with category or merchant filters to analyze specific spending patterns.
 - **🏷️ Custom Categories**: Create categories and choose from a library of icons to visually organize your spending.
-- **⚡ Flexible Entry**: Add manual transactions quickly. Merchant and tags are optional, and validity is checked instantly.
 - **Automated SMS Tracking**: Instantly logs expenses by parsing bank SMS alerts using optimized regex logic.
 - **Merchant Tagging**: Organize your spending with multiple tags. Tags replace merchant names as primary labels, providing a cleaner and more personalized view.
 - **Interactive Category Summaries**: Tap on any category in the summary tile to instantly filter your transactions.
-- **Smart Categorization**: Learns from your input to automatically assign categories and tags to future transactions from the same merchant.
+- **Hardware Back Button**: Navigate naturally from Analytics back to Home using your device's back button.
 
 ## 🏗️ Project Structure
 
@@ -25,7 +28,7 @@ Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for 
 ### Core Components (`app/src/main/java/com/example/expensetracker/`)
 
 #### Application Entry & Logic
-- **`MainActivity.kt`**: Manages navigation and dynamic theming context.
+- **`MainActivity.kt`**: Manages navigation (**Home**, **Analytics**, **Search**) with bottom navigation bar and hardware back button support.
 - **`SmsReceiver.kt`**: Listens for incoming SMS alerts and triggers the parsing/auto-categorization engine.
 
 #### Data Layer (`/data`)
@@ -33,9 +36,13 @@ Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for 
 - **`MerchantMapping.kt`**: Stores user-defined mappings for merchants, categories, and tags.
 
 #### UI Layer (`/ui`)
-- **`HomeScreen.kt`**: The main dashboard featuring interactive summaries, filtered lists, **Date Range Picker**, and **Settings** access.
+- **`HomeScreen.kt`**: Main dashboard with interactive summaries, transaction lists, **Search** button, **Date Range Picker**, and **Settings** access.
+- **`AnalyticsScreen.kt`**: Dedicated screen for **Visual Analytics**, displaying charts and trends with category filtering.
+- **`SearchScreen.kt`**: Search and filter transactions by merchant name.
+- **`charts/`**: Custom **Canvas-based** chart components (`DonutChart.kt`, `LineChart.kt`) for high-performance visualization.
 - **`CategoryScreen.kt`**: Category management with a horizontal **Icon Picker**.
-- **`AddTransactionDialog.kt`**: Enhanced dialog with smart defaults for manual entries.
+- **`AddTransactionDialog.kt`**: Enhanced dialog with **Date Picker** for manual entries.
+- **`EditTransactionDialog.kt`**: Dialog for modifying transactions, including **Date Picker** for backdating.
 - **`Theme.kt`**: Centralized, scalable theme engine supporting multiple palettes.
 
 ## 🛠️ Build Instructions
@@ -57,16 +64,45 @@ The final APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
 
 ### 📱 Running with Containerized Emulator
 
-1. **Start the Emulator**:
-   ```bash
-   podman compose up -d
-   ```
+Use the included emulator to test the app without installing Android Studio.
 
-2. **Access the UI**:
-   Open [http://localhost:6080](http://localhost:6080) in your browser.
+#### 1. Start the Emulator
+```bash
+podman compose up -d
+```
+*Wait for the emulator to fully boot (check status with `podman inspect --format="{{.State.Health.Status}}" android-emulator`)*.
 
-3. **Install the APK**:
-   ```bash
-   adb connect localhost:5555
-   adb install app/build/outputs/apk/debug/app-debug.apk
-   ```
+#### 2. Access the UI
+Open **[http://localhost:6080](http://localhost:6080)** in your web browser to view the Android screen.
+
+#### 3. Install the APK
+You can install the APK using your local ADB or directly via the container.
+
+**Option A: Using Container (No local setup required)**
+```bash
+# 1. Copy the APK into the container
+podman cp app/build/outputs/apk/debug/app-debug.apk android-emulator:/tmp/app.apk
+
+# 2. Install it using the container's ADB
+podman exec android-emulator adb install -r /tmp/app.apk
+```
+
+**Option B: Using Local ADB (If installed)**
+```bash
+adb connect localhost:5555
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+#### 4. Manual Testing (Send SMS)
+Simulate a bank transaction SMS to test the parsing logic:
+```bash
+# Send a test SMS via ADB
+podman exec android-emulator adb emu sms send IndianBank "A/c *8031 debited Rs. 179.00 on 20-12-25 to SRI NANDTHI. UPI:535411655315. Not you? SMS BLOCK to 9289592895. - Indian Bank"
+```
+*Check the app dashboard to see the transaction appear automatically!*
+
+#### 5. Shutdown
+To stop the emulator and free up resources:
+```bash
+podman compose down
+```

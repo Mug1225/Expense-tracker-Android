@@ -1,8 +1,11 @@
 package com.example.expensetracker.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +26,39 @@ fun AddTransactionDialog(
     var tags by remember { mutableStateOf("") }
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var date by remember { mutableStateOf(Calendar.getInstance().timeInMillis) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        // Preserve time, only update date
+                        val originalCal = Calendar.getInstance().apply { timeInMillis = date }
+                        val newCal = Calendar.getInstance().apply { timeInMillis = millis }
+                        
+                        originalCal.set(Calendar.YEAR, newCal.get(Calendar.YEAR))
+                        originalCal.set(Calendar.MONTH, newCal.get(Calendar.MONTH))
+                        originalCal.set(Calendar.DAY_OF_MONTH, newCal.get(Calendar.DAY_OF_MONTH))
+                        
+                        date = originalCal.timeInMillis
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -32,9 +68,46 @@ fun AddTransactionDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                TextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth())
-                TextField(value = merchant, onValueChange = { merchant = it }, label = { Text("Merchant") }, modifier = Modifier.fillMaxWidth())
-                TextField(value = tags, onValueChange = { tags = it }, label = { Text("Tags (comma separated)") }, modifier = Modifier.fillMaxWidth())
+                TextField(
+                    value = amount, 
+                    onValueChange = { amount = it }, 
+                    label = { Text("Amount") }, 
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                // Date Picker Field
+                OutlinedTextField(
+                    value = android.text.format.DateFormat.format("MMM dd, yyyy h:mm aa", date).toString(),
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(Icons.Default.EditCalendar, contentDescription = "Edit Date")
+                        }
+                    }, 
+                    enabled = false,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                
+                TextField(
+                    value = merchant, 
+                    onValueChange = { merchant = it }, 
+                    label = { Text("Merchant") }, 
+                    modifier = Modifier.fillMaxWidth()
+                )
+                TextField(
+                    value = tags, 
+                    onValueChange = { tags = it }, 
+                    label = { Text("Tags (comma separated)") }, 
+                    modifier = Modifier.fillMaxWidth()
+                )
                 
                 Text("Category", style = MaterialTheme.typography.labelLarge)
                 categories.forEach { category ->

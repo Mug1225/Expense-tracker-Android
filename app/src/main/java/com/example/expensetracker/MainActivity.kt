@@ -6,14 +6,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import com.example.expensetracker.ui.HomeScreen
+import com.example.expensetracker.ui.AnalyticsScreen
 import com.example.expensetracker.ui.PermissionRequestScreen
 import com.example.expensetracker.ui.CategoryScreen
+import com.example.expensetracker.ui.SearchScreen
 import com.example.expensetracker.ui.EditTransactionDialog
 import com.example.expensetracker.ui.TransactionViewModel
 import com.example.expensetracker.ui.theme.SpendWiseTheme
@@ -40,12 +46,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainContent(viewModel: TransactionViewModel = viewModel()) {
-    var hasSmsPermission by remember {
-        mutableStateOf(false)
-    }
+    var hasSmsPermission by remember { mutableStateOf(false) }
+    var currentScreen by remember { mutableStateOf("home") } // "home", "analytics", "categories"
+    var currentTab by remember { mutableStateOf(0) } // 0 = Home, 1 = Analytics
     
-    // Simple state-based navigation
-    var currentScreen by remember { mutableStateOf("home") }
     var editingTransaction by remember { mutableStateOf<Transaction?>(null) }
     val categories by viewModel.categories.collectAsState()
 
@@ -82,36 +86,88 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
                 )
             }
         } else {
-            when (currentScreen) {
-                "home" -> HomeScreen(
-                    viewModel = viewModel,
-                    onCategoryClick = { currentScreen = "categories" },
-                    onTransactionClick = { editingTransaction = it }
-                )
-                "categories" -> CategoryScreen(
-                    viewModel = viewModel,
-                    onBack = { currentScreen = "home" }
-                )
-            }
+             // BackHandler for Analytics -> Home
+             androidx.activity.compose.BackHandler(enabled = currentScreen == "analytics") {
+                 currentScreen = "home"
+                 currentTab = 0
+             }
+             
+             Scaffold(
+                bottomBar = {
+                    if (currentScreen == "home" || currentScreen == "analytics") {
+                        NavigationBar {
+                            NavigationBarItem(
+                                icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
+                                label = { Text("Home") },
+                                selected = currentTab == 0,
+                                onClick = { 
+                                    currentTab = 0 
+                                    currentScreen = "home"
+                                }
+                            )
+                            NavigationBarItem(
+                                icon = { Icon(Icons.Default.PieChart, contentDescription = "Analytics") },
+                                label = { Text("Analytics") },
+                                selected = currentTab == 1,
+                                onClick = { 
+                                    currentTab = 1
+                                    currentScreen = "analytics"
+                                }
+                            )
+                        }
+                    }
+                }
+             ) { paddingValues ->
+                Box(modifier = Modifier.padding(paddingValues)) {
+                    when (currentScreen) {
+                        "home" -> HomeScreen(
+                            viewModel = viewModel,
+                            onCategoryClick = { currentScreen = "categories" },
+                            onSearchClick = { currentScreen = "search" },
+                            onTransactionClick = { editingTransaction = it }
+                        )
+                        "analytics" -> AnalyticsScreen(
+                            viewModel = viewModel
+                        )
+                        "categories" -> CategoryScreen(
+                            viewModel = viewModel,
+                            onBack = { 
+                                currentScreen = "home"
+                                currentTab = 0
+                            }
+                        )
+                        "search" -> SearchScreen(
+                            viewModel = viewModel,
+                            onBack = { 
+                                currentScreen = "home"
+                                currentTab = 0
+                            },
+                            onMerchantSelected = { merchantName ->
+                                viewModel.setMerchantFilter(merchantName)
+                            }
+                        )
+                    }
+                }
+             }
         }
     }
 
-        editingTransaction?.let { transaction ->
-            EditTransactionDialog(
-                transaction = transaction,
-                categories = categories,
-                onDismiss = { editingTransaction = null },
-                onSave = { updated, mappingCategoryId, tags ->
-                    viewModel.updateTransaction(updated)
-                    mappingCategoryId?.let { 
-                        viewModel.saveMerchantMapping(updated.merchant, it, tags)
-                    }
-                    editingTransaction = null
-                },
-                onDelete = {
-                    viewModel.deleteTransaction(it)
-                    editingTransaction = null
+    editingTransaction?.let { transaction ->
+        EditTransactionDialog(
+            transaction = transaction,
+            categories = categories,
+            onDismiss = { editingTransaction = null },
+            onSave = { updated, mappingCategoryId, tags ->
+                viewModel.updateTransaction(updated)
+                mappingCategoryId?.let { 
+                    viewModel.saveMerchantMapping(updated.merchant, it, tags)
                 }
-            )
-        }
+                editingTransaction = null
+            },
+            onDelete = {
+                viewModel.deleteTransaction(it)
+                editingTransaction = null
+            }
+        )
+    }
 }

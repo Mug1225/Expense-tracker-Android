@@ -11,6 +11,13 @@ import androidx.compose.ui.unit.dp
 import com.example.expensetracker.data.Category
 import com.example.expensetracker.data.Transaction
 
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditTransactionDialog(
@@ -24,7 +31,41 @@ fun EditTransactionDialog(
     var merchant by remember { mutableStateOf(transaction.merchant) }
     var selectedCategoryId by remember { mutableStateOf(transaction.categoryId) }
     var tags by remember { mutableStateOf(transaction.tags ?: "") }
+    var selectedDate by remember { mutableStateOf(transaction.date) }
     var saveMapping by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        // Preserve time, only update date
+                        val originalCal = java.util.Calendar.getInstance().apply { timeInMillis = selectedDate }
+                        val newCal = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+                        
+                        originalCal.set(java.util.Calendar.YEAR, newCal.get(java.util.Calendar.YEAR))
+                        originalCal.set(java.util.Calendar.MONTH, newCal.get(java.util.Calendar.MONTH))
+                        originalCal.set(java.util.Calendar.DAY_OF_MONTH, newCal.get(java.util.Calendar.DAY_OF_MONTH))
+                        
+                        selectedDate = originalCal.timeInMillis
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -38,6 +79,29 @@ fun EditTransactionDialog(
                 Text(transaction.fullMessage, style = MaterialTheme.typography.bodySmall)
                 
                 Spacer(modifier = Modifier.height(8.dp))
+                
+                // Date Picker Field
+                OutlinedTextField(
+                    value = android.text.format.DateFormat.format("MMM dd, yyyy h:mm aa", selectedDate).toString(),
+                    onValueChange = {},
+                    label = { Text("Date") },
+                    readOnly = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }, // This clickable might be blocked by TextField
+                    trailingIcon = {
+                        IconButton(onClick = { showDatePicker = true }) {
+                            Icon(androidx.compose.material.icons.Icons.Default.EditCalendar, contentDescription = "Edit Date")
+                        }
+                    }, 
+                    enabled = false, // Disable typing, handling click via IconButton or wrapping Box
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
                 
                 TextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth())
                 TextField(value = merchant, onValueChange = { merchant = it }, label = { Text("Merchant") }, modifier = Modifier.fillMaxWidth())
@@ -71,6 +135,7 @@ fun EditTransactionDialog(
                     merchant = merchant,
                     categoryId = selectedCategoryId,
                     isEdited = true,
+                    date = selectedDate,
                     tags = if (tags.isNotBlank()) tags else null
                 )
                 onSave(updated, if (saveMapping) selectedCategoryId else null, if (saveMapping) tags else null)

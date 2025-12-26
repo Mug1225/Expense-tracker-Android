@@ -23,6 +23,7 @@ import java.util.*
 fun HomeScreen(
     viewModel: TransactionViewModel = viewModel(),
     onCategoryClick: () -> Unit,
+    onSearchClick: () -> Unit,
     onTransactionClick: (Transaction) -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -32,6 +33,7 @@ fun HomeScreen(
     val categories by viewModel.categories.collectAsState()
     val customDateRange by viewModel.customDateRange.collectAsState()
     val filterCategoryId by viewModel.filterCategoryId.collectAsState()
+    val merchantFilter by viewModel.merchantFilter.collectAsState()
     
     val context = androidx.compose.ui.platform.LocalContext.current
     var showAddManual by remember { mutableStateOf(false) }
@@ -41,55 +43,83 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    "SpendWise", 
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                
-                MonthPicker(
-                    selectedMonth = selectedMonth,
-                    customDateRange = customDateRange,
-                    onPrev = { viewModel.prevMonth() },
-                    onNext = { viewModel.nextMonth() },
-                    onDateClick = { showDatePicker = true }
-                )
-
-                if (filterCategoryId != null) {
-                    val filteredCategory = categories.find { it.id == filterCategoryId }
-                    AssistChip(
-                        onClick = { viewModel.setCategoryFilter(null) },
-                        label = { Text("Filtering: ${filteredCategory?.name}") },
-                        leadingIcon = { Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-                
+                // TopAppBar Row
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Total Expense",
-                        style = MaterialTheme.typography.titleMedium
+                        "SpendWise", 
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.ExtraBold
                     )
-                    IconButton(onClick = { showThemeDialog = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    
+                    Row {
+                        IconButton(onClick = onSearchClick) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
+                        }
+                        IconButton(onClick = { showThemeDialog = true }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
                     }
                 }
+                
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    MonthPicker(
+                        selectedMonth = selectedMonth,
+                        customDateRange = customDateRange,
+                        onPrev = { viewModel.prevMonth() },
+                        onNext = { viewModel.nextMonth() },
+                        onDateClick = { showDatePicker = true }
+                    )
 
-                Text(
-                    text = "Rs. ${totalExpense ?: 0.0}",
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                    // Filter chips
+                    Row(
+                        modifier = Modifier.padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (filterCategoryId != null) {
+                            val filteredCategory = categories.find { it.id == filterCategoryId }
+                            AssistChip(
+                                onClick = { viewModel.setCategoryFilter(null) },
+                                label = { Text("${filteredCategory?.name}") },
+                                leadingIcon = { Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            )
+                        }
+                        
+                        if (merchantFilter != null) {
+                            AssistChip(
+                                onClick = { viewModel.setMerchantFilter(null) },
+                                label = { Text("$merchantFilter") },
+                                leadingIcon = { Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            )
+                        }
+                    }
+                    
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Total Expense",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+
+                    Text(
+                        text = "Rs. ${totalExpense ?: 0.0}",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         },
         floatingActionButton = {
