@@ -82,13 +82,18 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
     ) {
         if (!hasSmsPermission) {
             PermissionRequestScreen {
-                launcher.launch(
-                    arrayOf(Manifest.permission.READ_SMS, Manifest.permission.RECEIVE_SMS)
+                val permissions = mutableListOf(
+                    Manifest.permission.READ_SMS, 
+                    Manifest.permission.RECEIVE_SMS
                 )
+                if (android.os.Build.VERSION.SDK_INT >= 33) { // Android 13+
+                    permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                launcher.launch(permissions.toTypedArray())
             }
         } else {
-             // BackHandler for Analytics -> Home
-             androidx.activity.compose.BackHandler(enabled = currentScreen == "analytics") {
+             // BackHandler for Analytics/Limits -> Home
+             androidx.activity.compose.BackHandler(enabled = currentScreen == "analytics" || currentScreen == "limits") {
                  currentScreen = "home"
                  currentTab = 0
              }
@@ -126,10 +131,18 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
                             onCategoryClick = { currentScreen = "categories" },
                             onSearchClick = { currentScreen = "search" },
                             onSmsImportClick = { currentScreen = "smsImport" },
+                            onLimitsClick = { currentScreen = "limits" },
                             onTransactionClick = { editingTransaction = it }
                         )
                         "analytics" -> AnalyticsScreen(
                             viewModel = viewModel
+                        )
+                        "limits" -> com.example.expensetracker.ui.LimitsScreen(
+                            viewModel = viewModel,
+                            onBackClick = {
+                                currentScreen = "home"
+                                currentTab = 0
+                            }
                         )
                         "categories" -> CategoryScreen(
                             viewModel = viewModel,

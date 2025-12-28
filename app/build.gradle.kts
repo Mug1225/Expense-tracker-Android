@@ -72,6 +72,9 @@ dependencies {
     implementation("com.google.dagger:hilt-android:2.50")
     ksp("com.google.dagger:hilt-android-compiler:2.50")
 
+    // Gson
+    implementation("com.google.code.gson:gson:2.10.1")
+
     // DataStore (optional, but good for simple prefs)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 

@@ -6,11 +6,13 @@ import javax.inject.Inject
 class TransactionRepository @Inject constructor(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
-    private val merchantMappingDao: MerchantMappingDao
+    private val merchantMappingDao: MerchantMappingDao,
+    private val spendingLimitDao: SpendingLimitDao
 ) {
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
     val allCategories: Flow<List<Category>> = categoryDao.getAllCategories()
     val allMappings: Flow<List<MerchantMapping>> = merchantMappingDao.getAllMappings()
+    val allSpendingLimits: Flow<List<SpendingLimit>> = spendingLimitDao.getAllSpendingLimits()
 
     fun getTransactionsForMonth(startTime: Long, endTime: Long) = 
         transactionDao.getTransactionsForMonth(startTime, endTime)
@@ -59,4 +61,17 @@ class TransactionRepository @Inject constructor(
 
     suspend fun getMappingForMerchant(merchantName: String) = 
         merchantMappingDao.getMappingForMerchant(merchantName)
+
+    // Spending Limit Methods
+    suspend fun addSpendingLimit(limit: SpendingLimit) {
+        spendingLimitDao.insert(limit)
+    }
+
+    suspend fun updateSpendingLimit(limit: SpendingLimit) {
+        spendingLimitDao.update(limit)
+    }
+
+    suspend fun deleteSpendingLimit(limit: SpendingLimit) {
+        spendingLimitDao.delete(limit)
+    }
 }

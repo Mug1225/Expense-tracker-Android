@@ -38,4 +38,9 @@ object DatabaseModule {
     fun provideMerchantMappingDao(appDatabase: AppDatabase): MerchantMappingDao {
         return appDatabase.merchantMappingDao()
     }
+
+    @Provides
+    fun provideSpendingLimitDao(appDatabase: AppDatabase): SpendingLimitDao {
+        return appDatabase.spendingLimitDao()
+    }
 }

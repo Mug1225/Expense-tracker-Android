@@ -17,6 +17,10 @@ Built with **Kotlin**, **Jetpack Compose**, **Room Database**, and **Hilt** for 
 - **📩 Enhanced SMS Parsing**: Automatically extracts transaction details (Amount, Merchant, Date) from HDFC, SBI, ICICI, Axis, and other bank SMS. Supports UPI, NEFT, IMPS, ATM, and Card transactions.
 - **🛡️ Smart Filtering**: Intelligently identifies and processes only **Debit** transactions for accurate expense tracking, filtering out promos and credit alerts.
 - **Merchant Tagging**: Organize your spending with multiple tags. Tags replace merchant names as primary labels, providing a cleaner and more personalized view.
+- **💰 Spending Limits**: Set monthly budgets for specific categories (e.g., "Food", "Entertainment") or your overall spending. Track progress with visual indicators.
+- **🔔 Smart Notifications**: Get instant alerts when you exceed your set spending limits to stay on track.
+- **💾 Backup & Restore**: Securely backup your data to a JSON file and restore it anytime, ensuring your financial data is safe even if you reinstall the app.
+- **📂 Data Portability**: Export your data to standard JSON format, giving you full control and ownership of your information.
 - **Interactive Category Summaries**: Tap on any category in the summary tile to instantly filter your transactions.
 - **Hardware Back Button**: Navigate naturally from Analytics back to Home using your device's back button.
 

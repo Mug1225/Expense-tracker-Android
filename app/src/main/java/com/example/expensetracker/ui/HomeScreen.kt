@@ -25,6 +25,7 @@ fun HomeScreen(
     onCategoryClick: () -> Unit,
     onSearchClick: () -> Unit,
     onSmsImportClick: () -> Unit,
+    onLimitsClick: () -> Unit,
     onTransactionClick: (Transaction) -> Unit
 ) {
     val transactions by viewModel.transactions.collectAsState()
@@ -41,6 +42,27 @@ fun HomeScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showOverflowMenu by remember { mutableStateOf(false) }
+
+    // Backup & Restore Launchers
+    val exportLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.backupData(context, uri) { success ->
+                android.widget.Toast.makeText(context, if (success) "Backup Successful" else "Backup Failed", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val importLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.restoreData(context, uri) { success ->
+                android.widget.Toast.makeText(context, if (success) "Restore Successful" else "Restore Failed", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -66,6 +88,9 @@ fun HomeScreen(
                         IconButton(onClick = onSearchClick) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
+                        IconButton(onClick = onLimitsClick) {
+                            Icon(Icons.Default.Notifications, contentDescription = "Limits")
+                        }
                         IconButton(onClick = { showThemeDialog = true }) {
                             Icon(Icons.Default.Settings, contentDescription = "Settings")
                         }
@@ -85,6 +110,27 @@ fun HomeScreen(
                                     },
                                     leadingIcon = {
                                         Icon(Icons.Default.Message, contentDescription = null)
+                                    }
+                                )
+                                Divider()
+                                DropdownMenuItem(
+                                    text = { Text("Backup Data (Export)") },
+                                    onClick = {
+                                        exportLauncher.launch("spendwise_backup_${System.currentTimeMillis()}.json")
+                                        showOverflowMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Save, contentDescription = null)
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Restore Data (Import)") },
+                                    onClick = {
+                                        importLauncher.launch(arrayOf("application/json"))
+                                        showOverflowMenu = false
+                                    },
+                                    leadingIcon = {
+                                        Icon(Icons.Default.Restore, contentDescription = null)
                                     }
                                 )
                             }

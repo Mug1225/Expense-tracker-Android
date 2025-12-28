@@ -15,8 +15,14 @@ import javax.inject.Inject
 
 @HiltViewModel
 class TransactionViewModel @Inject constructor(
-    private val repository: TransactionRepository
+    private val repository: TransactionRepository,
+    private val budgetManager: com.example.expensetracker.utils.BudgetManager,
+    private val backupManager: com.example.expensetracker.utils.BackupManager,
+    private val notificationHelper: com.example.expensetracker.utils.NotificationHelper
 ) : ViewModel() {
+
+    private val notifiedLimitIds = mutableSetOf<Int>()
+
 
     private val _selectedMonth = MutableStateFlow(Calendar.getInstance())
     val selectedMonth: StateFlow<Calendar> = _selectedMonth.asStateFlow()
@@ -26,6 +32,53 @@ class TransactionViewModel @Inject constructor(
 
     private val _currentTheme = MutableStateFlow(com.example.expensetracker.ui.theme.AppTheme.System)
     val currentTheme: StateFlow<com.example.expensetracker.ui.theme.AppTheme> = _currentTheme.asStateFlow()
+
+    val spendingLimits: StateFlow<List<SpendingLimit>> = repository.allSpendingLimits
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val limitStatuses: StateFlow<List<LimitStatus>> = combine(
+        repository.allSpendingLimits,
+        repository.allTransactions
+    ) { limits, transactions ->
+        val statuses = budgetManager.checkLimits(limits, transactions)
+
+        // Check for breaches and notify
+        statuses.forEach { status ->
+            if (status.isBreached) {
+                if (!notifiedLimitIds.contains(status.limit.id)) {
+                    notificationHelper.sendLimitBreachNotification(
+                        status.limit.id,
+                        status.limit.name,
+                        status.spentAmount,
+                        status.limit.amount
+                    )
+                    notifiedLimitIds.add(status.limit.id)
+                }
+            } else {
+                // Reset notification state if back within limit
+                notifiedLimitIds.remove(status.limit.id)
+            }
+        }
+        statuses
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun addSpendingLimit(limit: SpendingLimit) {
+        viewModelScope.launch {
+            repository.addSpendingLimit(limit)
+        }
+    }
+
+    fun updateSpendingLimit(limit: SpendingLimit) {
+        viewModelScope.launch {
+            repository.updateSpendingLimit(limit)
+        }
+    }
+
+    fun deleteSpendingLimit(limit: SpendingLimit) {
+        viewModelScope.launch {
+            repository.deleteSpendingLimit(limit)
+        }
+    }
 
     fun setTheme(theme: com.example.expensetracker.ui.theme.AppTheme) {
         _currentTheme.value = theme
@@ -326,6 +379,20 @@ class TransactionViewModel @Inject constructor(
             }.sortedBy { it.dateMillis }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun backupData(context: android.content.Context, uri: android.net.Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = backupManager.exportData(context, uri)
+            onResult(success)
+        }
+    }
+
+    fun restoreData(context: android.content.Context, uri: android.net.Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = backupManager.importData(context, uri)
+            onResult(success)
+        }
+    }
 
     private fun getMonthRange(calendar: Calendar): Pair<Long, Long> {
         val start = calendar.clone() as Calendar
