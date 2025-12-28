@@ -73,6 +73,18 @@ fun AnalyticsScreen(
                                 }
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text("Uncategorized") },
+                            onClick = {
+                                viewModel.setCategoryFilter(0)
+                                showCategoryMenu = false
+                            },
+                            leadingIcon = {
+                                if (filterCategoryId == 0) {
+                                    Icon(Icons.Default.Check, contentDescription = null)
+                                }
+                            }
+                        )
                         Divider()
                         categories.forEach { category ->
                             DropdownMenuItem(

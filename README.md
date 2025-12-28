@@ -67,6 +67,20 @@ podman run --rm -v ".:/app" android-builder gradle assembleDebug
 ```
 The final APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
 
+### Release Build (Signed APK)
+To build a signed release APK for installation:
+
+1. **Generate Keystore** (One-time setup):
+   ```bash
+   podman exec android-dev keytool -genkey -v -keystore app/release.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias key0 -storepass android -keypass android -dname "CN=SpendWise, OU=Mobile, O=SpendWise, L=Unknown, S=Unknown, C=US"
+   ```
+
+2. **Build APK**:
+   ```bash
+   podman exec android-dev gradle :app:assembleRelease
+   ```
+   The signed APK will be at `app/build/outputs/apk/release/app-release.apk`.
+
 ### 📱 Running with Containerized Emulator
 
 Use the included emulator to test the app without installing Android Studio.

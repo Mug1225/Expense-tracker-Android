@@ -1,0 +1,44 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Pie Chart (Center-Top) -->
+    <!-- Full Circle background for the pie -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,29 A16,16 0 1,1 53.99,29 Z" />
+    
+    <!-- Division line for the 'Slice' -->
+    <path
+        android:strokeColor="#6200EE"
+        android:strokeWidth="1.5"
+        android:pathData="M54,45 L54,29 M54,45 L68,36" />
+        
+    <!-- The 'Warm Slice' emphasis (simulated by a small separation or shading in Vector terms) -->
+    <!-- We make the top-right slice slightly larger or offset to signify "Draft 1" -->
+    <path
+        android:fillColor="#6200EE"
+        android:pathData="M54,45 L54,29 A16,16 0 0,1 68,36 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M56,43 L56,27 A16,16 0 0,1 70,34 Z" />
+
+    <!-- Wallet Body (Lower Center) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,53 h36 c2,0 4,2 4,4 v24 c0,2 -2,4 -4,4 h-36 c-2,0 -4,-2 -4,-4 v-24 c0,-2 2,-4 4,-4 Z" />
+    
+    <!-- Wallet Flap/Buckle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:strokeColor="#6200EE"
+        android:strokeWidth="1"
+        android:pathData="M65,63 h12 v12 h-12 c-2,0 -2,-12 0,-12 Z" />
+    <!-- Clasp -->
+    <path
+        android:fillColor="#6200EE"
+        android:pathData="M73,69 A1.5,1.5 0 1,1 72.9,69 Z" />
+        
+</vector>

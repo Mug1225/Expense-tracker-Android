@@ -286,12 +286,15 @@ fun LimitDialog(
 
                 // Date Range Mode
                 Text("Duration", style = MaterialTheme.typography.labelMedium)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = !isCustomDate, onClick = { isCustomDate = false })
-                    Text("Ongoing (From Now)", modifier = Modifier.clickable { isCustomDate = false })
-                    Spacer(modifier = Modifier.width(16.dp))
-                    RadioButton(selected = isCustomDate, onClick = { isCustomDate = true })
-                    Text("Custom Range", modifier = Modifier.clickable { isCustomDate = true })
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = !isCustomDate, onClick = { isCustomDate = false })
+                        Text("Ongoing (From Now)", modifier = Modifier.clickable { isCustomDate = false })
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = isCustomDate, onClick = { isCustomDate = true })
+                        Text("Custom Range", modifier = Modifier.clickable { isCustomDate = true })
+                    }
                 }
 
                 if (isCustomDate) {
