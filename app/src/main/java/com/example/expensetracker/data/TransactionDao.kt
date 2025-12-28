@@ -32,6 +32,12 @@ interface TransactionDao {
 
     @Query("UPDATE transactions SET tags = :tags WHERE merchant = :merchantName")
     suspend fun updateTagsForMerchant(merchantName: String, tags: String?)
+
+    @Delete
+    suspend fun deleteTransactions(transactions: List<Transaction>)
+
+    @Query("SELECT * FROM transactions WHERE (:minDate IS NULL OR date >= :minDate) AND (:maxDate IS NULL OR date <= :maxDate) AND (:categoryId IS NULL OR categoryId = :categoryId) AND (:merchant IS NULL OR merchant LIKE '%' || :merchant || '%')")
+    suspend fun getTransactionsByFilter(minDate: Long?, maxDate: Long?, categoryId: Int?, merchant: String?): List<Transaction>
 }
 
 data class CategoryExpense(

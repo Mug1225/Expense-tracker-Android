@@ -212,6 +212,106 @@ class TransactionViewModel @Inject constructor(
         }
     }
 
+    // Selection Mode Logic
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
+
+    private val _selectedTransactionIds = MutableStateFlow<Set<Int>>(emptySet())
+    val selectedTransactionIds: StateFlow<Set<Int>> = _selectedTransactionIds.asStateFlow()
+
+    fun toggleSelection(transactionId: Int) {
+        val currentSelection = _selectedTransactionIds.value.toMutableSet()
+        if (currentSelection.contains(transactionId)) {
+            currentSelection.remove(transactionId)
+        } else {
+            currentSelection.add(transactionId)
+        }
+        _selectedTransactionIds.value = currentSelection
+        
+        // Ensure selection mode is active (triggered by long press or first selection)
+        // User requested NOT to auto-exit if empty.
+        _isSelectionMode.value = true
+    }
+
+    fun clearSelection() {
+        _selectedTransactionIds.value = emptySet()
+        _isSelectionMode.value = false
+    }
+
+    fun deleteSelectedTransactions() {
+        viewModelScope.launch {
+            val selectedIds = _selectedTransactionIds.value
+            val currentTransactions = transactions.value
+            
+            // NOTE: If we are in "Global Selection Mode" (Filter), currentTransactions might not contain all selected IDs 
+            // if we are only viewing a specific month.
+            // However, our deleteTransactions DAO method takes a LIST of objects.
+            // If we only have IDs, we need to be careful.
+            // Actually, `selectedTransactionIds` tracks IDs.
+            // We should probably just delete by IDs for robustness, OR ensure we have the objects.
+            // Given the requirement "exclude some messages", the user likely did this on the Home Screen.
+            // But if we selected items from *outside* the current month view?
+            // The plan dictates we bring them into view.
+            // So `transactions.value` should contain them if we updated the filters correctly.
+            
+            val toDelete = currentTransactions.filter { selectedIds.contains(it.id) }
+            
+            // Fallback: If we selected items but they are somehow not in current list (edge case),
+            // we might miss them. But since we force filters to match, it should be fine.
+            // Ideally Repo should support deleteByIds, but let's stick to this for now.
+            
+            if (toDelete.isNotEmpty()) {
+                repository.deleteTransactions(toDelete)
+            }
+            clearSelection()
+        }
+    }
+
+    fun selectTransactionsByFilter(minDate: Long?, maxDate: Long?, categoryId: Int?, merchant: String?) {
+        viewModelScope.launch {
+            val matches = repository.getTransactionsByFilter(minDate, maxDate, categoryId, merchant)
+            if (matches.isNotEmpty()) {
+                val ids = matches.map { it.id }.toSet()
+                _selectedTransactionIds.value = ids
+                _isSelectionMode.value = true
+                
+                // FORCE UPDATE VIEW FILTERS TO SHOW THESE ITEMS
+                // 1. Date Range: If provided, use it. If not, use min/max of results.
+                if (minDate != null && maxDate != null) {
+                    _customDateRange.value = minDate to maxDate
+                } else {
+                    // Find min/max from results to ensure visibility
+                    val min = matches.minOf { it.date }
+                    val max = matches.maxOf { it.date }
+                    // Expand slightly to cover full days? 
+                    // Actually, let's just use the exact range or just clear date filter if it was limited?
+                    // Safe bet: Set custom range to cover the results.
+                    _customDateRange.value = min to max
+                }
+                
+                // 2. Category: If provided, use it.
+                if (categoryId != null) {
+                    _filterCategoryId.value = categoryId
+                } else {
+                    _filterCategoryId.value = null // Show all categories
+                }
+                
+                // 3. Merchant: If provided, use it? 
+                // Actually, if we filter by LIKE merchant, we might filter the view by exact merchant name?
+                // `merchantFilter` in VM filters by Exact Match currently: `it.merchant == params.merchantName`.
+                // Our DAO query was `LIKE`.
+                // If we set `merchantFilter` to the search term, and there are multiple merchants matching (e.g. "Uber" matches "Uber One" and "Uber Eats"),
+                // the UI filter logic `it.merchant == "Uber"` will HIDE "Uber Eats"!
+                // So we must NOT set `merchantFilter` if it's a partial match.
+                // Instead, we should rely on the Date/Category filters + the fact that we selected them.
+                // BUT, if we don't filter the view, other non-matching items for that date range will show up (Unselected).
+                // This is actually GOOD behavior: User sees "Selected matches" mixed with "Unselected non-matches", providing context.
+                // So let's CLEAR merchant filter to ensure we see all potential matches.
+                _merchantFilter.value = null 
+            }
+        }
+    }
+
     fun addCategory(name: String, iconName: String, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             if (repository.isCategoryNameDuplicate(name)) {

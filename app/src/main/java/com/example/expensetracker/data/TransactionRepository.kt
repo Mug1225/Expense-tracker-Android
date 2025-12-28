@@ -54,6 +54,14 @@ class TransactionRepository @Inject constructor(
         transactionDao.deleteTransaction(transaction)
     }
 
+    suspend fun deleteTransactions(transactions: List<Transaction>) {
+        transactionDao.deleteTransactions(transactions)
+    }
+
+    suspend fun getTransactionsByFilter(minDate: Long?, maxDate: Long?, categoryId: Int?, merchant: String?): List<Transaction> {
+        return transactionDao.getTransactionsByFilter(minDate, maxDate, categoryId, merchant)
+    }
+
     suspend fun addMapping(mapping: MerchantMapping) {
         merchantMappingDao.insertMapping(mapping)
         transactionDao.updateTagsForMerchant(mapping.merchantName, mapping.tags)
