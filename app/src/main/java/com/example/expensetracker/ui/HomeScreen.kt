@@ -388,7 +388,10 @@ fun DateRangePickerModal(
             }
         }
     ) {
-        DateRangePicker(state = datePickerState)
+        DateRangePicker(
+            state = datePickerState,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
