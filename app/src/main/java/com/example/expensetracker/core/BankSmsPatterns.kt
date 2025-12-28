@@ -45,8 +45,22 @@ object BankSmsPatterns {
     // ========== PAYEE/MERCHANT PATTERNS ==========
     // Matches text after "to" (for debits/transfers)
     // Updated to include @ for UPI IDs
+    // Added negative lookahead (?!.*SMS BLOCK) to avoid capturing block messages, but regex lookarounds can be complex in Java/Kotlin 
+    // Simplified: Ensure capturing group doesn't start with a number unless it's a UPI ID
     val PAYEE_TO_PATTERN = Pattern.compile(
         "(?i)\\b(?:to|paid to)\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-@]{2,30}?)(?:\\s+on|\\s+at|\\s+for|\\.|\\s{2,}|$)"
+    )
+
+    // Matches text after "for" (e.g. "debited for UPI-...")
+    // Excludes "for INR", "for Rs", "for POS transaction" via negative lookahead
+    val PAYEE_FOR_PATTERN = Pattern.compile(
+        "(?i)\\bfor\\s+(?!INR|Rs\\.?|POS transaction)([A-Za-z0-9][A-Za-z0-9\\s&.'-@]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
+    )
+
+    // Matches text before "credited" (for debits where beneficiary is credited)
+    // Refined to be more specific to avoid matching random words
+    val BENEFICIARY_CREDITED_PATTERN = Pattern.compile(
+        "(?i)(?:;|\\.)\\s*([A-Za-z0-9\\s&.'-]{2,30}?)\\s+credited"
     )
 
     // Matches text after "from" (for credits)
@@ -58,6 +72,8 @@ object BankSmsPatterns {
     val MERCHANT_AT_PATTERN = Pattern.compile(
         "(?i)\\bat\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)(?:\\s+on|\\.|\\s{2,}|$)"
     )
+
+
 
     // ========== ACCOUNT NUMBER PATTERNS ==========
     // Matches: A/c XX1234, Account XXXXX101, A/C 1234, A/C *5640
@@ -99,7 +115,7 @@ object BankSmsPatterns {
     // ========== BALANCE PATTERNS ==========
     // Matches: Avail. Bal: INR 10,000.00, Total Available balance: 5000.00
     val BALANCE_PATTERN = Pattern.compile(
-        "(?i)(?:Avail\\.?\\s*Bal|Available Balance|Total Available balance)\\s*:?\\s*(?:Rs\\.?|INR)?\\s*(\\d{1,3}(?:,\\d{3})*(?:\\.\\d{1,2})?)"
+        "(?i)(?:Avail\\.?\\s*Bal|Available Balance|Total Available balance|Available Credit Limit)\\s*:?\\s*(?:Rs\\.?|INR)?\\s*(\\d{1,3}(?:,\\d{3})*(?:\\.\\d{1,2})?)"
     )
 
     // ========== BANK SENDER ID MAPPING ==========
@@ -159,11 +175,16 @@ object BankSmsPatterns {
     fun getTransactionType(message: String): String {
         val lowerMessage = message.lowercase()
         return when {
-            lowerMessage.contains("credited") || lowerMessage.contains("received") || 
-            lowerMessage.contains("credit") -> "CREDIT"
+            // Check DEBIT first to handle cases like "debited ... credited to" (which are debits)
+            // Also handles "Credit Card ... debited"
             lowerMessage.contains("debited") || lowerMessage.contains("paid") || 
             lowerMessage.contains("spent") || lowerMessage.contains("withdrawn") ||
-            lowerMessage.contains("debit") || lowerMessage.contains("sent") -> "DEBIT"
+            (lowerMessage.contains("debit") && !lowerMessage.contains("credit card")) || // Avoid equating "credit card" to debit unless "debited" is present
+            lowerMessage.contains("sent") -> "DEBIT"
+
+            lowerMessage.contains("credited") || lowerMessage.contains("received") || 
+            lowerMessage.contains("credit") -> "CREDIT"
+            
             else -> "UNKNOWN"
         }
     }

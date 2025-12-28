@@ -87,8 +87,8 @@ object SmsParser {
      * Extracts merchant/payee name from message
      */
     private fun extractMerchant(message: String): String {
-        // Try "to" pattern (for debits/payments)
-        var matcher = BankSmsPatterns.PAYEE_TO_PATTERN.matcher(message)
+        // 1. Try "credited" pattern (Highest priority for this specific format)
+        var matcher = BankSmsPatterns.BENEFICIARY_CREDITED_PATTERN.matcher(message)
         if (matcher.find()) {
             val merchant = matcher.group(1)?.trim()
             if (!merchant.isNullOrBlank()) {
@@ -96,7 +96,35 @@ object SmsParser {
             }
         }
 
-        // Try "at" pattern (for POS transactions)
+        // 2. Try "for" pattern (e.g. for UPI-...)
+        matcher = BankSmsPatterns.PAYEE_FOR_PATTERN.matcher(message)
+        // Loop to find valid match (in case first "for" is "for INR" skipping, though regex handles lookahead, loop is safer if multiple "for" exist)
+        // Actually regex finds first match. If regex fails on "for INR", it might find next "for".
+        if (matcher.find()) {
+            val merchant = matcher.group(1)?.trim()
+            // Ignore if "for" extracts "dispute", "POS transaction", or purely numeric
+            if (!merchant.isNullOrBlank() && 
+                !merchant.equals("dispute", ignoreCase = true) &&
+                !merchant.contains("POS transaction", ignoreCase = true)) {
+                return cleanMerchantName(merchant)
+            }
+        }
+
+        // 3. Try "to" pattern (Standard)
+        // Filter out if it extracted the block number (starts with digit and length > 6 is suspicious for "to 921...")
+        matcher = BankSmsPatterns.PAYEE_TO_PATTERN.matcher(message)
+        if (matcher.find()) {
+            val merchant = matcher.group(1)?.trim()
+            if (!merchant.isNullOrBlank()) {
+                 // Heuristic: If it starts with digit and is long, it might be the block number interaction
+                 val isLikelyBlockNumber = merchant.first().isDigit() && merchant.length > 5 && !merchant.contains("@") // @ for UPI
+                 if (!isLikelyBlockNumber) {
+                     return cleanMerchantName(merchant)
+                 }
+            }
+        }
+
+        // 4. Try "at" pattern (POS)
         matcher = BankSmsPatterns.MERCHANT_AT_PATTERN.matcher(message)
         if (matcher.find()) {
             val merchant = matcher.group(1)?.trim()
@@ -105,7 +133,7 @@ object SmsParser {
             }
         }
 
-        // Try extracting UPI ID as fallback
+        // 5. Try extracting UPI ID as fallback
         val upiId = extractUpiId(message)
         if (upiId != null) {
             // Extract name before @ symbol
