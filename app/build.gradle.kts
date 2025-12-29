@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.expensetracker"
+    namespace = "com.optimisticbyte.expensetracker"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.spendwise"
+        applicationId = "com.optimisticbyte.spendwise"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
