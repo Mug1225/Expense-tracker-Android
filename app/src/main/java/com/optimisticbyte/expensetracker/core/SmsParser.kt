@@ -39,19 +39,19 @@ object SmsParser {
         val transactionMode = BankSmsPatterns.getTransactionMode(message)
 
         // Extract reference number (UPI/NEFT/IMPS)
-        val referenceNumber = extractReferenceNumber(message, transactionMode)
+        extractReferenceNumber(message, transactionMode)
 
         // Extract UPI ID if it's a UPI transaction
-        val upiId = if (transactionMode == "UPI") extractUpiId(message) else null
+        if (transactionMode == "UPI") extractUpiId(message)
 
         // Extract account number (last 4 digits)
-        val accountNumber = extractAccountNumber(message)
+        extractAccountNumber(message)
 
         // Extract date string (optional - we use timestamp as primary)
-        val parsedDate = extractDate(message)
+        extractDate(message)
 
         // Identify bank
-        val bank = BankSmsPatterns.identifyBank(sender)
+        BankSmsPatterns.identifyBank(sender)
 
         return Transaction(
             amount = amount,

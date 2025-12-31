@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.optimisticbyte.expensetracker.data.*
+import com.optimisticbyte.expensetracker.utils.AmountUtils
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -228,10 +229,12 @@ fun HomeScreen(
                         }
 
                         Text(
-                            text = "Rs. ${totalExpense ?: 0.0}",
+                            text = "Rs. ${AmountUtils.format(totalExpense ?: 0.0)}",
                             style = MaterialTheme.typography.displayMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -644,7 +647,7 @@ fun CategorySummary(
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         }
-                        Text("Rs. ${expense.totalAmount}", fontWeight = FontWeight.Bold)
+                        Text("Rs. ${AmountUtils.format(expense.totalAmount)}", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -724,10 +727,12 @@ fun TransactionItem(
                     }
                 }
                 Text(
-                    text = "Rs. ${transaction.amount}",
+                    text = "Rs. ${AmountUtils.format(transaction.amount)}",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.error,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
@@ -761,3 +766,4 @@ fun TransactionItem(
         }
     }
 }
+

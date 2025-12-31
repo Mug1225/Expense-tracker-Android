@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.optimisticbyte.expensetracker.data.LimitStatus
 import com.optimisticbyte.expensetracker.data.SpendingLimit
+import com.optimisticbyte.expensetracker.utils.AmountUtils
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -89,6 +90,7 @@ fun LimitsScreen(
                     items(limitStatuses) { status ->
                         LimitCard(
                             status = status,
+                            categories = categories,
                             onEdit = {
                                 limitToEdit = status.limit
                                 showLimitDialog = true
@@ -121,11 +123,16 @@ fun LimitsScreen(
 @Composable
 fun LimitCard(
     status: LimitStatus,
+    categories: List<com.optimisticbyte.expensetracker.data.Category>,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val progress = (status.spentAmount / status.limit.amount).toFloat().coerceIn(0f, 1f)
-    val color = if (status.isBreached) Color.Red else MaterialTheme.colorScheme.primary
+    val color = when {
+        progress >= 0.9f -> Color.Red
+        progress >= 0.7f -> Color(0xFFFF9800) // Orange/Yellow
+        else -> Color(0xFF4CAF50) // Green
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -153,6 +160,20 @@ fun LimitCard(
                     }
                 }
             }
+            
+            val categoryNames = if (status.limit.categoryIds == "ALL") {
+                "All Categories"
+            } else {
+                val ids = status.limit.categoryIds.split(",").toSet()
+                categories.filter { it.id.toString() in ids }.joinToString { it.name }
+            }
+            
+            Text(
+                text = "Categories: $categoryNames",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+
             Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress = progress,
@@ -164,8 +185,8 @@ fun LimitCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("Spent: ${status.spentAmount}")
-                Text("Limit: ${status.limit.amount}")
+                Text("Spent: Rs. ${AmountUtils.format(status.spentAmount)}", style = MaterialTheme.typography.bodySmall)
+                Text("Limit: Rs. ${AmountUtils.format(status.limit.amount)}", style = MaterialTheme.typography.bodySmall)
             }
             if (status.isBreached) {
                 Text(
@@ -189,11 +210,14 @@ fun LimitDialog(
 ) {
     var name by remember { mutableStateOf(limitToEdit?.name ?: "") }
     var amount by remember { mutableStateOf(limitToEdit?.amount?.toString() ?: "") }
-    var selectedCategory by remember { mutableStateOf(
+    
+    var selectedCategoryIds by remember { mutableStateOf(
         if (limitToEdit != null && limitToEdit.categoryIds != "ALL") {
-            categories.find { it.id.toString() == limitToEdit.categoryIds }
-        } else null
+            limitToEdit.categoryIds.split(",").filter { it.isNotBlank() }.mapNotNull { it.toIntOrNull() }.toSet()
+        } else emptySet<Int>()
     ) }
+    
+    var isAllCategories by remember { mutableStateOf(limitToEdit == null || limitToEdit.categoryIds == "ALL") }
     
     // Date Logic
     var isCustomDate by remember { mutableStateOf(limitToEdit != null && limitToEdit.endDate != Long.MAX_VALUE) }
@@ -258,27 +282,63 @@ fun LimitDialog(
                 
                 // Category
                 Box {
+                    val displayValue = if (isAllCategories) "All Categories" 
+                                     else if (selectedCategoryIds.isEmpty()) "None Selected"
+                                     else categories.filter { it.id in selectedCategoryIds }.joinToString { it.name }
+
                     OutlinedTextField(
-                        value = selectedCategory?.name ?: "All Categories",
+                        value = displayValue,
                         onValueChange = {},
-                        label = { Text("Category") },
+                        label = { Text("Categories") },
                         readOnly = true,
                         trailingIcon = {
                             IconButton(onClick = { expanded = true }) {
                                 Icon(Icons.Default.ArrowDropDown, contentDescription = "Select Category")
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().clickable { expanded = true }
                     )
-                    DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    DropdownMenu(
+                        expanded = expanded, 
+                        onDismissRequest = { expanded = false },
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    ) {
                         DropdownMenuItem(
-                            text = { Text("All Categories") },
-                            onClick = { selectedCategory = null; expanded = false }
+                            text = { 
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(checked = isAllCategories, onCheckedChange = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("All Categories")
+                                }
+                            },
+                            onClick = { 
+                                isAllCategories = !isAllCategories
+                                if (isAllCategories) selectedCategoryIds = emptySet()
+                            }
                         )
+                        Divider()
                         categories.forEach { category ->
                             DropdownMenuItem(
-                                text = { Text(category.name) },
-                                onClick = { selectedCategory = category; expanded = false }
+                                text = { 
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(
+                                            checked = !isAllCategories && selectedCategoryIds.contains(category.id),
+                                            onCheckedChange = null,
+                                            enabled = !isAllCategories
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(category.name)
+                                    }
+                                },
+                                onClick = { 
+                                    if (!isAllCategories) {
+                                        val current = selectedCategoryIds.toMutableSet()
+                                        if (current.contains(category.id)) current.remove(category.id)
+                                        else current.add(category.id)
+                                        selectedCategoryIds = current
+                                    }
+                                },
+                                enabled = !isAllCategories
                             )
                         }
                     }
@@ -364,10 +424,12 @@ fun LimitDialog(
                         }
                         val finalEndDate = if (isCustomDate) endDate else Long.MAX_VALUE
                         
+                        val catIdsString = if (isAllCategories) "ALL" else selectedCategoryIds.joinToString(",")
+                        
                         val newLimit = limitToEdit?.copy(
                             name = name,
                             amount = amt,
-                            categoryIds = selectedCategory?.id?.toString() ?: "ALL",
+                            categoryIds = catIdsString,
                             startDate = finalStartDate,
                             endDate = finalEndDate
                         ) ?: SpendingLimit(
@@ -376,13 +438,15 @@ fun LimitDialog(
                             startDate = finalStartDate,
                             endDate = finalEndDate,
                             period = "MONTHLY",
-                            categoryIds = selectedCategory?.id?.toString() ?: "ALL"
+                            categoryIds = catIdsString
                         )
                         
                         onConfirm(newLimit)
                     }
                 },
-                enabled = name.isNotBlank() && amount.toDoubleOrNull() != null && (!isCustomDate || startDate <= endDate)
+                enabled = name.isNotBlank() && amount.toDoubleOrNull() != null && 
+                          (!isCustomDate || startDate <= endDate) && 
+                          (isAllCategories || selectedCategoryIds.isNotEmpty())
             ) { Text("Save") }
         },
         dismissButton = {

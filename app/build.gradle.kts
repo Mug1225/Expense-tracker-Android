@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.optimisticbyte.expensetracker"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.optimisticbyte.spendwise"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -33,7 +33,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")
         }
@@ -87,6 +88,10 @@ dependencies {
 
     // DataStore (optional, but good for simple prefs)
     implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // Glance (Widgets)
+    implementation("androidx.glance:glance-appwidget:1.0.0")
+    implementation("androidx.glance:glance-material3:1.0.0")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

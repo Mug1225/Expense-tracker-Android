@@ -1,5 +1,11 @@
 package com.optimisticbyte.expensetracker.data
 
+import android.content.Context
+import androidx.glance.appwidget.updateAll
+import com.optimisticbyte.expensetracker.widget.TotalSpentWidget
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -7,8 +13,16 @@ class TransactionRepository @Inject constructor(
     private val transactionDao: TransactionDao,
     private val categoryDao: CategoryDao,
     private val merchantMappingDao: MerchantMappingDao,
-    private val spendingLimitDao: SpendingLimitDao
+    private val spendingLimitDao: SpendingLimitDao,
+    @ApplicationContext private val context: Context
 ) {
+    private val scope = MainScope()
+
+    private fun updateWidgets() {
+        scope.launch {
+            TotalSpentWidget().updateAll(context)
+        }
+    }
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
     val allCategories: Flow<List<Category>> = categoryDao.getAllCategories()
     val allMappings: Flow<List<MerchantMapping>> = merchantMappingDao.getAllMappings()
@@ -25,10 +39,12 @@ class TransactionRepository @Inject constructor(
 
     suspend fun addTransaction(transaction: Transaction) {
         transactionDao.insertTransaction(transaction)
+        updateWidgets()
     }
 
     suspend fun updateTransaction(transaction: Transaction) {
         transactionDao.updateTransaction(transaction)
+        updateWidgets()
     }
 
     suspend fun addCategory(category: Category) {
@@ -52,10 +68,12 @@ class TransactionRepository @Inject constructor(
 
     suspend fun deleteTransaction(transaction: Transaction) {
         transactionDao.deleteTransaction(transaction)
+        updateWidgets()
     }
 
     suspend fun deleteTransactions(transactions: List<Transaction>) {
         transactionDao.deleteTransactions(transactions)
+        updateWidgets()
     }
 
     suspend fun getTransactionsByFilter(minDate: Long?, maxDate: Long?, categoryId: Int?, merchant: String?): List<Transaction> {
@@ -73,13 +91,16 @@ class TransactionRepository @Inject constructor(
     // Spending Limit Methods
     suspend fun addSpendingLimit(limit: SpendingLimit) {
         spendingLimitDao.insert(limit)
+        updateWidgets()
     }
 
     suspend fun updateSpendingLimit(limit: SpendingLimit) {
         spendingLimitDao.update(limit)
+        updateWidgets()
     }
 
     suspend fun deleteSpendingLimit(limit: SpendingLimit) {
         spendingLimitDao.delete(limit)
+        updateWidgets()
     }
 }
