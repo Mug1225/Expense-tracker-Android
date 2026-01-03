@@ -8,9 +8,9 @@ import java.util.regex.Pattern
  */
 object BankSmsPatterns {
 
-    // ========== TRANSACTION TYPE PATTERNS ==========
+    // Matches keywords that indicate a transaction (debit/spent)
     val TRANSACTION_TYPE_PATTERN = Pattern.compile(
-        "(?i)\\b(credited|debited|credit|debit|paid|received|sent|spent|withdrawn)\\b"
+        "(?i)\\b(debited|spent|withdrawn|paid|payment|transfer|sent|purchase|owner name|amount \\(inr\\))\\b"
     )
 
     // ========== AMOUNT PATTERNS ==========
@@ -18,6 +18,11 @@ object BankSmsPatterns {
     // Updated to allow unformatted numbers (no commas)
     val AMOUNT_PATTERN = Pattern.compile(
         "(?i)(?:Rs\\.?|INR)\\s*([\\d,]+(?:\\.\\d{1,2})?)"
+    )
+
+    // Matches amount in POS transactions (e.g., "Amount (INR) 985.00")
+    val AMOUNT_POS_PATTERN = Pattern.compile(
+        "(?i)Amount\\s*\\((?:INR|Rs\\.?)\\)?\\s*([\\d,]+(?:\\.\\d{1,2})?)"
     )
 
     // Alternative amount pattern for messages that use "by" or "of"
@@ -70,7 +75,23 @@ object BankSmsPatterns {
 
     // Matches text after "at" (common for POS transactions)
     val MERCHANT_AT_PATTERN = Pattern.compile(
-        "(?i)\\bat\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)(?:\\s+on|\\.|\\s{2,}|$)"
+        "(?i)\\bat\\s*:?\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)(?:\\s+on|\\.|\\s{2,}|$)"
+    )
+
+    // Matches text after "towards" (common in netbanking)
+    val MERCHANT_TOWARDS_PATTERN = Pattern.compile(
+        "(?i)\\btowards\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
+    )
+
+    // Matches text after "Info:" (ICICI/Axis)
+    val MERCHANT_INFO_PATTERN = Pattern.compile(
+        "(?i)Info\\s*:?\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'*-]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
+    )
+
+    // Matches text after "credited" preceded by a semicolon or period
+    // Redefined to capture the beneficiary name
+    val MERCHANT_CREDITED_PATTERN = Pattern.compile(
+        "(?i)(?:;|\\.|on)\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)\\s+credited"
     )
 
 
@@ -94,6 +115,16 @@ object BankSmsPatterns {
     // Matches UPI IDs: name@bank, mobile@upi
     val UPI_ID_PATTERN = Pattern.compile(
         "\\b([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+)\\b"
+    )
+
+    // Matches text after "Terminal Owner Name" (SBI POS)
+    val MERCHANT_OWNER_PATTERN = Pattern.compile(
+        "(?i)Terminal Owner Name\\s+([A-Za-z0-9][A-Za-z0-9\\s&.',-]{2,50}?)[.;]"
+    )
+
+    // Matches "trf to MERCHANT" (SBI UPI)
+    val MERCHANT_TRF_TO_PATTERN = Pattern.compile(
+        "(?i)trf\\s+to\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-@]{2,30}?)(?:\\s+Refno|\\s+on|\\s+at|\\.|\\s{2,}|$)"
     )
 
     // Matches UPI Reference numbers (10-12 digits)
@@ -120,16 +151,17 @@ object BankSmsPatterns {
 
     // ========== BANK SENDER ID MAPPING ==========
     val BANK_SENDERS = mapOf(
-        "HDFC" to listOf("HDFCBK", "HDFC", "HDFCBN", "HDFCBANK"),
-        "ICICI" to listOf("ICICIB", "ICICI", "ICICIBK"),
-        "SBI" to listOf("SBIINB", "SBIIN", "SBI", "SBIBANK"),
-        "Axis" to listOf("AXISBK", "AXIS", "AXISMB"),
+        "HDFC" to listOf("HDFCBK", "HDFC", "HDFCBN", "HDFCBANK", "HDFC BANK", "HDFCPR"),
+        "ICICI" to listOf("ICICIB", "ICICI", "ICICIBK", "ICICI BANK", "ICICIP"),
+        "SBI" to listOf("SBIINB", "SBIIN", "SBI", "SBIBANK", "SBIET", "SBIPS"),
+        "Axis" to listOf("AXISBK", "AXIS", "AXISMB", "AXIS BANK", "AXISBT"),
         "Kotak" to listOf("KOTAKM", "KOTAK"),
         "PNB" to listOf("PNBSMS", "PNB"),
         "BOB" to listOf("BOBTXN", "BOB"),
         "Canara" to listOf("CANBNK", "CANARA"),
         "IDFC" to listOf("IDFCFB", "IDFC"),
-        "Yes Bank" to listOf("YESBNK", "YESBANK")
+        "Yes Bank" to listOf("YESBNK", "YESBANK"),
+        "Indian Bank" to listOf("INDIAB", "INDIAN", "INDIBK")
     )
 
     /**
@@ -149,22 +181,13 @@ object BankSmsPatterns {
      * Checks if message is likely a transaction SMS
      */
     fun isTransactionMessage(message: String): Boolean {
-        val lowerMessage = message.lowercase()
-        
-        // Must contain either credited or debited
-        val hasTransactionType = lowerMessage.contains("credited") || 
-                                  lowerMessage.contains("debited") ||
-                                  lowerMessage.contains("credit") ||
-                                  lowerMessage.contains("debit") ||
-                                  lowerMessage.contains("spent") ||
-                                  lowerMessage.contains("withdrawn") ||
-                                  lowerMessage.contains("paid") ||
-                                  lowerMessage.contains("received") ||
-                                  lowerMessage.contains("sent")
+        // Must contain keywords that indicate a transaction (debit/spent) with word boundaries
+        val hasTransactionType = TRANSACTION_TYPE_PATTERN.matcher(message).find()
         
         // Must contain amount pattern
         val hasAmount = AMOUNT_PATTERN.matcher(message).find() || 
-                       AMOUNT_BY_OF_PATTERN.matcher(message).find()
+                       AMOUNT_BY_OF_PATTERN.matcher(message).find() ||
+                       AMOUNT_POS_PATTERN.matcher(message).find()
         
         return hasTransactionType && hasAmount
     }

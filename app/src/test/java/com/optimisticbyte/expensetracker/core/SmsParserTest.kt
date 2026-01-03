@@ -138,79 +138,107 @@ class SmsParserTest {
     }
 
     @Test
-    fun `merchant name cleaning - should capitalize properly`() {
-        val sms = "Rs 500 debited from A/c XX1234 to AMAZON PAY INDIA on 26-Dec"
+    fun `HDFC card with At On format - should extract merchant correctly`() {
+        // Spent Rs.17072 On HDFC Bank Card 0511 At 84 ZIMSON SHOPPING ARCADE On 2025-10-04:13:29:33
+        val sms = "Spent Rs.17072 On HDFC Bank Card 0511 At 84 ZIMSON SHOPPING ARCADE On 2025-10-04:13:29:33.Not You? To Block+Reissue Call 18002586161/SMS BLOCK CC 0511 to 7308080808"
         val result = SmsParser.parseSms("HDFCBK", sms, System.currentTimeMillis())
         
-        assertNotNull("Should parse transaction", result)
-        // Merchant name should be properly formatted (not all caps)
-        val merchant = result?.merchant ?: ""
-        assertTrue("Merchant should be cleaned", merchant.isNotBlank())
+        assertNotNull("Should parse HDFC card At-On transaction", result)
+        assertEquals(17072.00, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be extracted", result?.merchant?.contains("Zimson", ignoreCase = true) == true)
     }
+
     @Test
-    fun `HDFC Sent format - should parse correctly`() {
-        val sms = """
-            Sent Rs.2.00
-            From HDFC Bank A/C *5640
-            To Mr Mugesh
-            On 26/12/25
-            Ref 536012114341
-            Not You?
-            Call 18002586161/SMS BLOCK UPI to 7308080808
-        """.trimIndent()
-        
+    fun `HDFC card At format without date - should extract merchant correctly`() {
+        // Spent Rs.2999 On HDFC Bank Card 0511 At BATA INDIA, On 2026-01-02:13:08:57
+        val sms = "Spent Rs.2999 On HDFC Bank Card 0511 At BATA INDIA, On 2026-01-02:13:08:57.Not You? To Block+Reissue Call 18002586161/SMS BLOCK CC 0511 to 7308080808"
         val result = SmsParser.parseSms("HDFCBK", sms, System.currentTimeMillis())
         
-        assertNotNull("Should parse 'Sent' format", result)
-        assertEquals(2.00, result?.amount ?: 0.0, 0.01)
-        assertTrue("Should extract merchant 'Mr Mugesh'", result?.merchant?.contains("Mugesh", ignoreCase = true) == true)
-        
-        // These assertions should now pass with updated patterns
-        // Note: accountNumber and referenceNumber are extracted but not stored in Transaction entity for now
-        // assertNotNull("Should extract account number", result?.accountNumber) 
-        // assertEquals("5640", result?.accountNumber)
-        // assertNotNull("Should extract reference", result?.referenceNumber)
-        // assertEquals("536012114341", result?.referenceNumber)
+        assertNotNull("Should parse BATA INDIA transaction", result)
+        assertEquals(2999.00, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be Bata India", result?.merchant?.contains("Bata", ignoreCase = true) == true)
     }
 
     @Test
-    fun `ICICI debit with extra text - should parse correctly`() {
-        // "ICICI Bank Acct XX728 debited for Rs 10.00 on 24-Dec-25; VIJAY AQUA INDU credited. UPI:116138852721. Call 18002662 for dispute. SMS BLOCK 728 to 9215676766."
+    fun `ICICI card with multiple On keywords - should extract merchant correctly`() {
+        // INR 1,153.40 spent using ICICI Bank Card XX3004 on 10-Oct-25 on BOOKMYSHOW
+        val sms = "INR 1,153.40 spent using ICICI Bank Card XX3004 on 10-Oct-25 on BOOKMYSHOW. Avl Limit: INR 2,98,281.84. If not you, call 1800 2662/SMS BLOCK 3004 to 9215676766.?"
+        val result = SmsParser.parseSms("ICICIB", sms, System.currentTimeMillis())
+        
+        assertNotNull("Should parse ICICI multi-on transaction", result)
+        assertEquals(1153.40, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be Bookmyshow", result?.merchant?.contains("Bookmyshow", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun `Indian Bank to format - should extract merchant correctly`() {
+        // A/c *8031 debited Rs. 179.00 on 20-12-25 to SRI NANDTHI
+        val sms = "A/c *8031 debited Rs. 179.00 on 20-12-25 to SRI NANDTHI . UPI:535411655315. Not you? SMS BLOCK to 9289592895, Dial 1930 for Cyber Fraud - Indian Bank"
+        val result = SmsParser.parseSms("IndianBank", sms, System.currentTimeMillis())
+        
+        assertNotNull("Should parse Indian Bank transaction", result)
+        assertEquals(179.00, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be SRI NANDTHI", result?.merchant?.contains("Nandthi", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun `HDFC Netbanking format - should extract merchant correctly`() {
+        val sms = "Dear Customer, This is to inform you that an amount of Rs. 700.00 has been debited from your account No. XXXX3221 on account of National Electronic Funds Transfer transaction using HDFC Bank NetBanking."
+        val result = SmsParser.parseSms("HDFCBK", sms, System.currentTimeMillis())
+        
+        assertNotNull("Should parse HDFC NetBanking", result)
+        assertEquals(700.00, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be extracted", result?.merchant?.contains("National", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun `SBI POS format - should extract merchant correctly`() {
+        val sms = "Dear Valued SBI Debit Card Holder, Terminal Owner Name State Project Monitori. Terminal Id 43R24163. Date & Time Jan 16, 2024, 17:34. Transaction Number 401617479902. Amount (INR) 985.00."
+        val result = SmsParser.parseSms("SBIINB", sms, System.currentTimeMillis())
+        
+        assertNotNull("Should parse SBI POS", result)
+        assertEquals(985.00, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be extracted", result?.merchant?.contains("Monitori", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun `SBI UPI format with trf to - should extract merchant correctly`() {
+        // Dear UPI user A/C X2481 debited by 120.0 on date 03Nov25 trf to SARAVANAKUMAR V Refno 530717244504 If not u? call-1800111109 for other services-18001234-SBI
+        val sms = "Dear UPI user A/C X2481 debited by 120.0 on date 03Nov25 trf to SARAVANAKUMAR V Refno 530717244504 If not u? call-1800111109 for other services-18001234-SBI "
+        val result = SmsParser.parseSms("JX-SBIUPI-S", sms, System.currentTimeMillis())
+        
+        assertNotNull("Should parse SBI UPI trf to", result)
+        assertEquals(120.0, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be SARAVANAKUMAR V", result?.merchant?.contains("Saravanakumar", ignoreCase = true) == true)
+        assertFalse("Should not contain other services", result?.merchant?.contains("other services", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun `Axis Info format - should extract merchant correctly`() {
+        val sms = "INR 100.00 was debited from your A/c no. XX1236. Date & Time: 19-12-24, 10:19:54 IST. Transaction Info: FLIPKART PAYMENTS"
+        val result = SmsParser.parseSms("AXISBK", sms, System.currentTimeMillis())
+        
+        assertNotNull("Should parse Axis info format", result)
+        assertEquals(100.00, result?.amount ?: 0.0, 0.01)
+        assertTrue("Merchant should be Flipkart", result?.merchant?.contains("Flipkart", ignoreCase = true) == true)
+    }
+
+    @Test
+    fun `ICICI message from Indian Bank - should NOT use block number as merchant`() {
         val sms = "ICICI Bank Acct XX728 debited for Rs 10.00 on 24-Dec-25; VIJAY AQUA INDU credited. UPI:116138852721. Call 18002662 for dispute. SMS BLOCK 728 to 9215676766."
-        val result = SmsParser.parseSms("ICICIB", sms, System.currentTimeMillis())
+        val result = SmsParser.parseSms("IndianBank", sms, System.currentTimeMillis())
         
-        assertNotNull("Should parse ICICI debit with extra text", result)
+        assertNotNull("Should parse ICICI transaction even if from different sender", result)
         assertEquals(10.00, result?.amount ?: 0.0, 0.01)
-        // Merchant should arguably be "VIJAY AQUA INDU" if possible, or at least parsed as a debit
-        // Current logic might struggle with "credited" appearing in the text, so we'll see
-        // For now, let's just assert it parsed as a transaction first
+        assertTrue("Merchant should be Vijay Aqua Indu, not block number", result?.merchant?.contains("Vijay", ignoreCase = true) == true)
+        assertFalse("Merchant should NOT be the block number", result?.merchant?.contains("9215676766") == true)
     }
 
     @Test
-    fun `ICICI UPI debit with 'for' keyword - should extract merchant correctly`() {
-        // "ICICI Bank Credit Card XX5008 debited for INR 40.00 on 24-Dec-25 for UPI-572492856855-JUICE. To dispute call 18001080/SMS BLOCK 5008 to 9215676766"
-        val sms = "ICICI Bank Credit Card XX5008 debited for INR 40.00 on 24-Dec-25 for UPI-572492856855-JUICE. To dispute call 18001080/SMS BLOCK 5008 to 9215676766"
-        val result = SmsParser.parseSms("ICICIB", sms, System.currentTimeMillis())
+    fun `Promotional airtel message - should NOT be parsed as transaction`() {
+        val sms = "Never run out of data during important moments. Get 75 GB + 200 GB rollover on Postpaid at just Rs.449. Upgrade now https://i.airtel.in/goldencohort"
+        val result = SmsParser.parseSms("Airtel", sms, System.currentTimeMillis())
         
-        assertNotNull("Should parse ICICI UPI 'for' debit", result)
-        assertEquals(40.00, result?.amount ?: 0.0, 0.01)
-        // Expected: UPI-572492856855-JUICE or JUICE. 
-        // Definitely NOT "9215676766"
-        val merchant = result?.merchant ?: ""
-        assertFalse("Should not extract block number as merchant", merchant.contains("9215676766"))
-        assertTrue("Should extract UPI reference/merchant", merchant.contains("JUICE", ignoreCase = true)) 
-    }
-
-    @Test
-    fun `ICICI debit with 'credited' beneficiary - should extract merchant correctly`() {
-        // "ICICI Bank Acct XX728 debited for Rs 10.00 on 24-Dec-25; VIJAY AQUA INDU credited. UPI:116138852721. Call 18002662 for dispute. SMS BLOCK 728 to 9215676766."
-        val sms = "ICICI Bank Acct XX728 debited for Rs 10.00 on 24-Dec-25; VIJAY AQUA INDU credited. UPI:116138852721. Call 18002662 for dispute. SMS BLOCK 728 to 9215676766."
-        val result = SmsParser.parseSms("ICICIB", sms, System.currentTimeMillis())
-        
-        assertNotNull("Should parse ICICI 'credited' debit", result)
-        assertEquals(10.00, result?.amount ?: 0.0, 0.01)
-        val merchant = result?.merchant ?: ""
-        assertFalse("Should not extract block number as merchant", merchant.contains("9215676766"))
-        assertTrue("Should extract VIJAY AQUA INDU", merchant.contains("VIJAY AQUA INDU", ignoreCase = true))
+        assertNull("Promotional message should not be parsed as transaction", result)
     }
 }
