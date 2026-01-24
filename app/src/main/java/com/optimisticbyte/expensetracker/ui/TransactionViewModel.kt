@@ -337,7 +337,7 @@ class TransactionViewModel @Inject constructor(
         }
     }
 
-    fun addManualTransaction(amount: Double, merchant: String, date: Long, categoryId: Int?, tags: String? = null) {
+    fun addManualTransaction(amount: Double, merchant: String, date: Long, categoryId: Int?, tags: String? = null, comment: String? = null) {
         viewModelScope.launch {
             repository.addTransaction(
                 Transaction(
@@ -348,7 +348,8 @@ class TransactionViewModel @Inject constructor(
                     fullMessage = "Manually entered",
                     categoryId = categoryId,
                     isEdited = true,
-                    tags = tags
+                    tags = tags,
+                    comment = comment
                 )
             )
         }

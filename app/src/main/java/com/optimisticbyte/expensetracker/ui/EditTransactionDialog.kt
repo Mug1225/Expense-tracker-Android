@@ -12,7 +12,11 @@ import com.optimisticbyte.expensetracker.data.Category
 import com.optimisticbyte.expensetracker.data.Transaction
 
 import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,9 +35,12 @@ fun EditTransactionDialog(
     var merchant by remember { mutableStateOf(transaction.merchant) }
     var selectedCategoryId by remember { mutableStateOf(transaction.categoryId) }
     var tags by remember { mutableStateOf(transaction.tags ?: "") }
+    var comment by remember { mutableStateOf(transaction.comment ?: "") }
     var selectedDate by remember { mutableStateOf(transaction.date) }
     var saveMapping by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showCalculator by remember { mutableStateOf(false) }
+    var showTags by remember { mutableStateOf(transaction.tags?.isNotBlank() == true) }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
@@ -67,6 +74,17 @@ fun EditTransactionDialog(
         }
     }
 
+    if (showCalculator) {
+        CalculatorDialog(
+            initialValue = amount,
+            onDismiss = { showCalculator = false },
+            onConfirm = { 
+                amount = it
+                showCalculator = false
+            }
+        )
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Edit Transaction") },
@@ -91,7 +109,7 @@ fun EditTransactionDialog(
                         .clickable { showDatePicker = true }, // This clickable might be blocked by TextField
                     trailingIcon = {
                         IconButton(onClick = { showDatePicker = true }) {
-                            Icon(androidx.compose.material.icons.Icons.Default.EditCalendar, contentDescription = "Edit Date")
+                            Icon(Icons.Default.EditCalendar, contentDescription = "Edit Date")
                         }
                     }, 
                     enabled = false, // Disable typing, handling click via IconButton or wrapping Box
@@ -103,9 +121,46 @@ fun EditTransactionDialog(
                     )
                 )
                 
-                TextField(value = amount, onValueChange = { amount = it }, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth())
-                TextField(value = merchant, onValueChange = { merchant = it }, label = { Text("Merchant") }, modifier = Modifier.fillMaxWidth())
-                TextField(value = tags, onValueChange = { tags = it }, label = { Text("Tags (comma separated)") }, modifier = Modifier.fillMaxWidth())
+                TextField(
+                    value = amount, 
+                    onValueChange = { amount = it }, 
+                    label = { Text("Amount") }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showCalculator = true }) {
+                            Icon(Icons.Default.Calculate, contentDescription = "Calculate")
+                        }
+                    }
+                )
+
+                TextField(
+                    value = merchant, 
+                    onValueChange = { merchant = it }, 
+                    label = { Text("Merchant") }, 
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showTags = !showTags }) {
+                            Icon(Icons.Default.Label, contentDescription = "Toggle Tags", tint = if (showTags) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                )
+
+                if (showTags) {
+                    TextField(
+                        value = tags, 
+                        onValueChange = { tags = it }, 
+                        label = { Text("Tags (comma separated)") }, 
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                TextField(
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text("Comment (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.Comment, contentDescription = null) }
+                )
                 
                 Text("Category", style = MaterialTheme.typography.labelLarge)
                 categories.forEach { category ->
@@ -136,7 +191,8 @@ fun EditTransactionDialog(
                     categoryId = selectedCategoryId,
                     isEdited = true,
                     date = selectedDate,
-                    tags = if (tags.isNotBlank()) tags else null
+                    tags = if (tags.isNotBlank()) tags else null,
+                    comment = if (comment.isNotBlank()) comment else null
                 )
                 onSave(updated, if (saveMapping) selectedCategoryId else null, if (saveMapping) tags else null)
             }) {

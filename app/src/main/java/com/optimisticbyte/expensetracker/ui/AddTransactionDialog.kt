@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.EditCalendar
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,14 +22,17 @@ import java.util.Calendar
 fun AddTransactionDialog(
     categories: List<Category>,
     onDismiss: () -> Unit,
-    onConfirm: (Double, String, Long, Int?, String?) -> Unit
+    onConfirm: (Double, String, Long, Int?, String?, String?) -> Unit // added comment parameter
 ) {
     var amount by remember { mutableStateOf("") }
     var merchant by remember { mutableStateOf("") }
     var tags by remember { mutableStateOf("") }
+    var comment by remember { mutableStateOf("") }
     var selectedCategoryId by remember { mutableStateOf<Int?>(null) }
     var date by remember { mutableStateOf(Calendar.getInstance().timeInMillis) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showCalculator by remember { mutableStateOf(false) }
+    var showTags by remember { mutableStateOf(false) }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = date)
@@ -60,6 +66,17 @@ fun AddTransactionDialog(
         }
     }
 
+    if (showCalculator) {
+        CalculatorDialog(
+            initialValue = amount,
+            onDismiss = { showCalculator = false },
+            onConfirm = { 
+                amount = it
+                showCalculator = false
+            }
+        )
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Manual Transaction") },
@@ -72,7 +89,12 @@ fun AddTransactionDialog(
                     value = amount, 
                     onValueChange = { amount = it }, 
                     label = { Text("Amount") }, 
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showCalculator = true }) {
+                            Icon(Icons.Default.Calculate, contentDescription = "Calculate")
+                        }
+                    }
                 )
                 
                 // Date Picker Field
@@ -100,13 +122,29 @@ fun AddTransactionDialog(
                     value = merchant, 
                     onValueChange = { merchant = it }, 
                     label = { Text("Merchant") }, 
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = {
+                        IconButton(onClick = { showTags = !showTags }) {
+                            Icon(Icons.Default.Label, contentDescription = "Toggle Tags", tint = if (showTags) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 )
+
+                if (showTags) {
+                    TextField(
+                        value = tags, 
+                        onValueChange = { tags = it }, 
+                        label = { Text("Tags (comma separated)") }, 
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 TextField(
-                    value = tags, 
-                    onValueChange = { tags = it }, 
-                    label = { Text("Tags (comma separated)") }, 
-                    modifier = Modifier.fillMaxWidth()
+                    value = comment,
+                    onValueChange = { comment = it },
+                    label = { Text("Comment (optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    leadingIcon = { Icon(Icons.Default.Comment, contentDescription = null) }
                 )
                 
                 Text("Category", style = MaterialTheme.typography.labelLarge)
@@ -131,7 +169,8 @@ fun AddTransactionDialog(
                 if (amt > 0.0) {
                     val finalMerchant = if (merchant.isBlank()) "Manual" else merchant
                     val finalTags = if (tags.isNotBlank()) tags else null
-                    onConfirm(amt, finalMerchant, date, selectedCategoryId, finalTags)
+                    val finalComment = if (comment.isNotBlank()) comment else null
+                    onConfirm(amt, finalMerchant, date, selectedCategoryId, finalTags, finalComment)
                 }
             }, enabled = (amount.toDoubleOrNull() ?: 0.0) > 0.0) {
                 Text("Add")

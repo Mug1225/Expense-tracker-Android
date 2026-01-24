@@ -29,6 +29,11 @@ import androidx.compose.runtime.collectAsState
 import com.optimisticbyte.expensetracker.data.Transaction
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.optimisticbyte.expensetracker.utils.rememberInAppUpdateManager
+import com.google.android.play.core.install.model.InstallStatus
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -62,6 +67,40 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
     }
 
     val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    val updateManager = rememberInAppUpdateManager()
+    val updateLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            android.util.Log.e("MainActivity", "Update flow failed! Result code: ${result.resultCode}")
+        }
+    }
+
+    LaunchedEffect(updateManager.installStatus) {
+        if (updateManager.installStatus == InstallStatus.DOWNLOADED) {
+            val result = snackbarHostState.showSnackbar(
+                message = "An update has just been downloaded.",
+                actionLabel = "RESTART",
+                duration = SnackbarDuration.Indefinite
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                updateManager.completeUpdate()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        updateManager.checkForUpdate { info ->
+            updateManager.startFlexibleUpdate(
+                context as android.app.Activity,
+                info,
+                updateLauncher
+            )
+        }
+    }
     LaunchedEffect(Unit) {
         val readGranted = androidx.core.content.ContextCompat.checkSelfPermission(
             context,
@@ -99,6 +138,7 @@ fun MainContent(viewModel: TransactionViewModel = viewModel()) {
              }
              
              Scaffold(
+                snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     if (currentScreen == "home" || currentScreen == "analytics") {
                         NavigationBar {

@@ -290,13 +290,28 @@ object SmsParser {
 
         // 3. Formatting
         val finalName = cleaned
-            .replace(Regex("[^a-zA-Z0-9\\s&'-]"), "")
+            .replace(Regex("[^a-zA-Z0-9\\s&'_-]"), "")
             .trim()
             .split(" ")
             .filter { it.isNotBlank() }
             .joinToString(" ") { word ->
-                if (word.length <= 3 && word.all { it.isUpperCase() }) word.uppercase()
-                else word.lowercase().replaceFirstChar { it.uppercase() }
+                // Handle words with underscores or dashes by capitalizing sub-parts
+                if (word.contains("_") || word.contains("-")) {
+                    if (word.all { it.isUpperCase() || it == '_' || it == '-' }) {
+                        word.uppercase()
+                    } else {
+                        word.split(Regex("(?<=[_-])|(?=[_-])"))
+                            .joinToString("") { part ->
+                                if (part == "_" || part == "-") part
+                                else if (part.length <= 3 && part.all { it.isUpperCase() }) part.uppercase()
+                                else part.lowercase().replaceFirstChar { it.uppercase() }
+                            }
+                    }
+                } else if (word.length <= 3 && word.all { it.isUpperCase() }) {
+                    word.uppercase()
+                } else {
+                    word.lowercase().replaceFirstChar { it.uppercase() }
+                }
             }
 
         // 4. Final safety check: if it's just a long number, it's likely a phone or ref, not a merchant

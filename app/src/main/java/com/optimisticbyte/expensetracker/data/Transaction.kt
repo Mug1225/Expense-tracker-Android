@@ -14,5 +14,6 @@ data class Transaction(
     val fullMessage: String,
     var categoryId: Int? = null,
     var isEdited: Boolean = false,
-    var tags: String? = null
+    var tags: String? = null,
+    var comment: String? = null
 )

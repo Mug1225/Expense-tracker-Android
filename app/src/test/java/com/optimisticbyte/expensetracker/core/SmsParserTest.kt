@@ -235,6 +235,17 @@ class SmsParserTest {
     }
 
     @Test
+    fun `Indian Bank with underscore merchant and numeric date - should extract correctly`() {
+        // Sample provided by user
+        val sms = "A/c *8031 debited Rs. 170.00 on 17-01-26 to MK_ZION_MENS. UPI:601795027694. Not you? SMS BLOCK to 9289592895, Dial 1930 for Cyber Fraud - Indian Bank"
+        val result = SmsParser.parseSms("IndianBank", sms, System.currentTimeMillis())
+        
+        assertNotNull("Should parse the Indian Bank sample", result)
+        assertEquals(170.00, result?.amount ?: 0.0, 0.01)
+        assertEquals("MK_ZION_MENS", result?.merchant)
+    }
+
+    @Test
     fun `Promotional airtel message - should NOT be parsed as transaction`() {
         val sms = "Never run out of data during important moments. Get 75 GB + 200 GB rollover on Postpaid at just Rs.449. Upgrade now https://i.airtel.in/goldencohort"
         val result = SmsParser.parseSms("Airtel", sms, System.currentTimeMillis())

@@ -128,12 +128,35 @@ fun SmsImportScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         item {
-                            Text(
-                                "Last $daysBack days • ${messages.size} messages",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
+                            val allSelected = messages.isNotEmpty() && selectedIds.size == messages.size
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedIds = if (allSelected) emptySet() else messages.map { it.id }.toSet()
+                                    }
+                                    .padding(vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = allSelected,
+                                    onCheckedChange = {
+                                        selectedIds = if (it) messages.map { it.id }.toSet() else emptySet()
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = if (allSelected) "Deselect All" else "Select All",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Text(
+                                    "Last $daysBack days • ${messages.size} messages",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         
                         items(messages, key = { it.id }) { message ->

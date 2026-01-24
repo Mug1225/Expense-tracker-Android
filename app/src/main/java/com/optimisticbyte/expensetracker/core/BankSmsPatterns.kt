@@ -53,45 +53,45 @@ object BankSmsPatterns {
     // Added negative lookahead (?!.*SMS BLOCK) to avoid capturing block messages, but regex lookarounds can be complex in Java/Kotlin 
     // Simplified: Ensure capturing group doesn't start with a number unless it's a UPI ID
     val PAYEE_TO_PATTERN = Pattern.compile(
-        "(?i)\\b(?:to|paid to)\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-@]{2,30}?)(?:\\s+on|\\s+at|\\s+for|\\.|\\s{2,}|$)"
+        "(?i)\\b(?:to|paid to)\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'_@]{2,30}?)(?:\\s+on|\\s+at|\\s+for|\\.|\\s{2,}|$)"
     )
 
     // Matches text after "for" (e.g. "debited for UPI-...")
     // Excludes "for INR", "for Rs", "for POS transaction" via negative lookahead
     val PAYEE_FOR_PATTERN = Pattern.compile(
-        "(?i)\\bfor\\s+(?!INR|Rs\\.?|POS transaction)([A-Za-z0-9][A-Za-z0-9\\s&.'-@]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
+        "(?i)\\bfor\\s+(?!INR|Rs\\.?|POS transaction)([A-Za-z0-9][A-Za-z0-9\\s&.'_@]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
     )
 
     // Matches text before "credited" (for debits where beneficiary is credited)
     // Refined to be more specific to avoid matching random words
     val BENEFICIARY_CREDITED_PATTERN = Pattern.compile(
-        "(?i)(?:;|\\.)\\s*([A-Za-z0-9\\s&.'-]{2,30}?)\\s+credited"
+        "(?i)(?:;|\\.)\\s*([A-Za-z0-9\\s&.'_]{2,30}?)\\s+credited"
     )
 
     // Matches text after "from" (for credits)
     val PAYEE_FROM_PATTERN = Pattern.compile(
-        "(?i)\\b(?:from|received from)\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
+        "(?i)\\b(?:from|received from)\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'_]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
     )
 
     // Matches text after "at" (common for POS transactions)
     val MERCHANT_AT_PATTERN = Pattern.compile(
-        "(?i)\\bat\\s*:?\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)(?:\\s+on|\\.|\\s{2,}|$)"
+        "(?i)\\bat\\s*:?\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'_]{2,30}?)(?:\\s+on|\\.|\\s{2,}|$)"
     )
 
     // Matches text after "towards" (common in netbanking)
     val MERCHANT_TOWARDS_PATTERN = Pattern.compile(
-        "(?i)\\btowards\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
+        "(?i)\\btowards\\s+([A-Za-z0-9][A-Za-z0-9\\s&.'_]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
     )
 
     // Matches text after "Info:" (ICICI/Axis)
     val MERCHANT_INFO_PATTERN = Pattern.compile(
-        "(?i)Info\\s*:?\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'*-]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
+        "(?i)Info\\s*:?\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'*_-]{2,30}?)(?:\\s+on|\\s+at|\\.|\\s{2,}|$)"
     )
 
     // Matches text after "credited" preceded by a semicolon or period
     // Redefined to capture the beneficiary name
     val MERCHANT_CREDITED_PATTERN = Pattern.compile(
-        "(?i)(?:;|\\.|on)\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'-]{2,30}?)\\s+credited"
+        "(?i)(?:;|\\.|on)\\s*([A-Za-z0-9][A-Za-z0-9\\s&.'_]{2,30}?)\\s+credited"
     )
 
 

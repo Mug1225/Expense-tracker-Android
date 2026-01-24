@@ -21,7 +21,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "expense_tracker_db"
-        ).build()
+        ).addMigrations(AppDatabase.MIGRATION_3_4).build()
     }
 
     @Provides

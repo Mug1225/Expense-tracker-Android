@@ -311,8 +311,8 @@ fun HomeScreen(
             AddTransactionDialog(
                 categories = categories,
                 onDismiss = { showAddManual = false },
-                onConfirm = { amount, merchant, date, catId, tags ->
-                    viewModel.addManualTransaction(amount, merchant, date, catId, tags)
+                onConfirm = { amount, merchant, date, catId, tags, comment ->
+                    viewModel.addManualTransaction(amount, merchant, date, catId, tags, comment)
                     showAddManual = false
                 }
             )
